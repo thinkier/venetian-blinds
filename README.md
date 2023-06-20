@@ -15,6 +15,7 @@ Powered by Raspberry Pi 4B 2GB HAP.rs driving Arduino on BTT SKR Pico v1.0.
 - There's [board jumpers (sect 3. sensorless homing)](https://github.com/bigtreetech/SKR-Pico/blob/master/BTT%20SKR%20Pico%20V1.0%20Instruction%20Manual.pdf) to connect the TMC2209 DIAG (aka StallGuard interrupt) pin to the endstop pins (X/Y/Z & Filament Sensor)
   - DIAG pins needs to be pulled up according to BTT supplied Klipper config, active high 
 - [BTT SKR Pico v1.0 Pin Diagram](https://github.com/bigtreetech/SKR-Pico/blob/master/Hardware/BTT%20SKR%20Pico%20V1.0-PIN.pdf)
+  - GPIO8/GPIO9 are connected to hardware UART1 on the RP2040, [`UART Serial2(8, 9, 0, 0);`](https://forum.arduino.cc/t/serial2-on-raspberry-pi-pico/875244/2)
 - [BTT SKR Pico v1.0 Klipper config](https://github.com/bigtreetech/SKR-Pico/blob/master/Klipper/SKR%20Pico%20klipper.cfg)
   - TMC2209 MS1/MS2 address is documented in Klipper configuration. Pin documentation does not specify it.
 - StealthChop is on by default (SpreadCycle off, mutually exclusive)
