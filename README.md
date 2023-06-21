@@ -30,5 +30,6 @@ Powered by Raspberry Pi 4B 2GB HAP.rs driving Arduino on BTT SKR Pico v1.0.
   - When homed vertical tilt would be 90%
   - State does not need to be stored to nonvolatile memory. Self calibration works.
   - Trigger self calibration when fully opening instead of executing the exact amount of calculated steps.
+  - Stepping task can be [offloaded to core1](https://forum.arduino.cc/t/arduino-rp2040-connect-multithreading-with-mbed-os-and-dual-core-processing/983731/7) while core0 deals with Serial1 (host) and Serial2 (Stepper Drivers)
 - Measurements need to be made for steps-to-extend and steps-to-tilt. These will be stored in [Accessory.toml](./Accessory.toml)
 - A 3D printed D-shaft doesn't hold its shape from experience. Use a [mounting hub](https://www.pololu.com/product/1998)
