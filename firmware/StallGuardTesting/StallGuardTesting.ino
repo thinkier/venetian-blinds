@@ -1,8 +1,5 @@
-#include <Arduino.h>
-#define SOFTWARE_SERIAL_IMPLEMENTED false
 #include <TMC2209.h>
 
-UART Serial2(8, 9, 0, 0);
 HardwareSerial & serial_stream = Serial2;
 
 const long SERIAL_BAUD_RATE = 115200;
