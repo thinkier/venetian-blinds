@@ -1,5 +1,7 @@
 #[macro_use]
 extern crate log;
+#[macro_use]
+extern crate serde_derive;
 
 use tokio;
 
@@ -8,7 +10,8 @@ use hap::{
     storage::FileStorage,
     Result,
 };
-use crate::controller::{Controller, ControllerConfig};
+use crate::controller::{Controller};
+use crate::controller::config::ControllerConfig;
 
 mod server;
 mod controller;
@@ -21,13 +24,14 @@ async fn main() -> Result<()> {
     let mut storage = FileStorage::current_dir().await?;
     let config = server::config::get(&mut storage).await?;
 
-    let controller = Controller::from_config(ControllerConfig::load().await?);
+    let controller = Controller::from_config(ControllerConfig::load().await?)?;
 
     let server = IpServer::new(config, storage).await?;
     server.add_accessory(server::bridge::get()).await?;
 
-    for i in 0..controller.config.accessory_count {
-        server.add_accessory(server::accessory::get(controller.clone(), i)).await?;
+    let mut index = 0;
+    for name in controller.config.blinds.keys() {
+        server.add_accessory(server::accessory::get(controller.get_instance(name), index)).await?;
     }
 
     server.run_handle().await?;

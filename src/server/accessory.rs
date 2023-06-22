@@ -2,22 +2,22 @@ use hap::accessory::{AccessoryInformation, HapAccessory};
 use hap::accessory::window_covering::WindowCoveringAccessory;
 use hap::characteristic::{CharacteristicCallbacks};
 use hap::service::window_covering::WindowCoveringService;
-use crate::controller::Controller;
+use crate::controller::{Controller, ControllerInstance};
 
-pub fn get(controller: Controller, index: u8) -> impl HapAccessory {
-    let mut venetian = WindowCoveringAccessory::new(2 + index as u64, AccessoryInformation {
+pub fn get(controller: ControllerInstance, index: u64) -> impl HapAccessory {
+    let mut venetian = WindowCoveringAccessory::new(2 + index, AccessoryInformation {
         name: format!("Venetian Blinds {}", index),
         manufacturer: "ACME Pty Ltd".into(),
         model: "Raspberry Pi 4B 2GB + BigTreeTech SKR Pico v1.0".into(),
         ..Default::default()
     }).unwrap();
 
-    initialize_characteristics(&mut venetian.window_covering, controller, index);
+    initialize_characteristics(&mut venetian.window_covering, controller);
 
     return venetian;
 }
 
-fn initialize_characteristics(window_covering: &mut WindowCoveringService, controller: Controller, index: u8) {
+fn initialize_characteristics(window_covering: &mut WindowCoveringService, controller: ControllerInstance) {
     window_covering.current_horizontal_tilt_angle = None;
     window_covering.target_horizontal_tilt_angle = None;
     window_covering.hold_position = None;
