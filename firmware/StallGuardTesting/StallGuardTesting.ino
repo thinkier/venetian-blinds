@@ -31,7 +31,7 @@ void setup() {
     stepper_driver.setHardwareEnablePin(pinEnn);
     stepper_driver.enable();
     stepper_driver.moveUsingStepDirInterface();
-    stepper_driver.setCoolStepDurationThreshold(4096);
+    stepper_driver.setCoolStepDurationThreshold((1 << 20) - 1);
 }
 
 void loop() {
