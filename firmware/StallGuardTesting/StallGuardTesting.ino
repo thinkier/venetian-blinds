@@ -34,10 +34,10 @@ void setup() {
     stepper_driver.setHardwareEnablePin(pinEnn);
     stepper_driver.enable();
     stepper_driver.setCoolStepDurationThreshold((1 << 20) - 1);
-    stepper_driver.moveAtVelocity(500);
+    // stepper_driver.moveAtVelocity(500);
 
-    // stepper_driver.moveUsingStepDirInterface();
-    // setupPwm();
+    stepper_driver.moveUsingStepDirInterface();
+    setupPwm();
     // multicore_launch_core1(stepDelayTask);
 
     now = get_absolute_time();
@@ -82,10 +82,6 @@ void loop() {
         Serial.println("Stepper driver not setup and communicating!");
         return;
     }
-
-    Serial.print("TIME:");
-    Serial.print(to_us_since_boot(now) / 1e3);
-    Serial.print(",");
 
     Serial.print("2*SGTHRS:");
     Serial.print(2 * (uint16_t) SGTHRS);
