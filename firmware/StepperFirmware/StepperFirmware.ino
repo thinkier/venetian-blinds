@@ -1,6 +1,8 @@
 #include <pico/multicore.h>
 #include <pico/sync.h>
 #include <pico/time.h>
+
+#include <Adafruit_NeoPixel.h>
 #include <TMC2209.h>
 
 #include "steps.h"
@@ -15,6 +17,9 @@ TMC2209 driver_x;
 TMC2209 driver_y;
 TMC2209 driver_z;
 TMC2209 driver_e;
+
+#define PIXELS 1
+Adafruit_NeoPixel pixels(PIXELS, 24, NEO_GRB + NEO_KHZ800);
 
 void setup() {
     // Setup SerialUSB
@@ -38,6 +43,10 @@ void setup() {
     Serial.println("Setting up concurrency");
     critical_section_init(stepper_vars);
     multicore_launch_core1(stepper_setup);
+
+    // Setup NeoPixel
+    pixels.begin();
+
     Serial.println("Setup completed");
 }
 
@@ -220,8 +229,19 @@ bool debugCmdHandler() {
         debug_cmd.toUpperCase();
 
         if (debug_cmd.equals("DEBUG")) {
-            Serial.println("Enabled debug mode");
-            debug = true;
+            debug = !debug;
+            Serial.print("Toggled debug mode: debug=");
+            Serial.println(debug);
+
+            if (debug) {
+                for (int i = 0; i < PIXELS; i++) {
+                    pixels.setPixelColor(i, pixels.Color(0, 32, 0));
+                }
+            } else {
+                for (int i = 0; i < PIXELS; i++) {
+                    pixels.setPixelColor(i, pixels.Color(0, 0, 0));
+                }
+            }
         } else if (debug_cmd.equals("TEST")) {
             Serial.println("Spinning all motors by 200 steps.");
 
