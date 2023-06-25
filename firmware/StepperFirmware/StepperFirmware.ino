@@ -21,16 +21,22 @@ TMC2209 driver_e;
 #define PIXELS 1
 Adafruit_NeoPixel pixels(PIXELS, 24, NEO_GRB + NEO_KHZ800);
 
+bool debug = true;
+
+
 void setup() {
     // Setup SerialUSB
     Serial.begin(2000000);
 
+    // Setup Serial1 (UART)
+    Serial1.begin(2000000);
+
     // Setup Pins
     Serial.println("Setting up pins");
-    setup_pins(enn, OUTPUT);
+    setup_pins(enn, OUTPUT, HIGH);
     setup_pins(step, OUTPUT);
     setup_pins(dir, OUTPUT);
-    setup_pins(diag, INPUT);
+    setup_pins(diag, INPUT_PULLUP);
 
     // Setup TMC2209 UART Driver
     Serial.println("Setting up stepper motor drivers");
@@ -46,8 +52,21 @@ void setup() {
 
     // Setup NeoPixel
     pixels.begin();
+    refreshNeopixel();
 
     Serial.println("Setup completed");
+}
+
+void refreshNeopixel() {
+    if (debug) {
+        for (int i = 0; i < PIXELS; i++) {
+            pixels.setPixelColor(i, pixels.Color(0, 32, 0));
+        }
+    } else {
+        for (int i = 0; i < PIXELS; i++) {
+            pixels.setPixelColor(i, pixels.Color(0, 0, 0));
+        }
+    }
 }
 
 void setup_driver(TMC2209 &driver, uint8_t addr) {
@@ -160,8 +179,6 @@ void stepper_loop_fe() {
     digitalWrite(step.e, LOW);
 }
 
-bool debug = false;
-
 void handleDriveData() {
     critical_section_enter_blocking(stepper_vars);
 
@@ -220,6 +237,8 @@ void handleDriveData() {
 
         Serial1.println();
     }
+
+    critical_section_exit(stepper_vars);
 }
 
 bool debugCmdHandler() {
@@ -233,15 +252,7 @@ bool debugCmdHandler() {
             Serial.print("Toggled debug mode: debug=");
             Serial.println(debug);
 
-            if (debug) {
-                for (int i = 0; i < PIXELS; i++) {
-                    pixels.setPixelColor(i, pixels.Color(0, 32, 0));
-                }
-            } else {
-                for (int i = 0; i < PIXELS; i++) {
-                    pixels.setPixelColor(i, pixels.Color(0, 0, 0));
-                }
-            }
+            refreshNeopixel();
         } else if (debug_cmd.equals("TEST")) {
             Serial.println("Spinning all motors by 200 steps.");
 
@@ -374,18 +385,20 @@ bool steppingCmdHandler() {
     return false;
 }
 
-void printDiagnosticsInformation() {}
+void printDiagnosticsInformation() {
+    Serial.println("SerialUSB ping.");
+}
 
 void loop() {
-    handleDriveData();
+//    handleDriveData();
 
-    if (debugCmdHandler()) {
-        return;
-    }
+//    if (debugCmdHandler()) {
+//        return;
+//    }
 
-    if (steppingCmdHandler()) {
-        return;
-    }
+//    if (steppingCmdHandler()) {
+//        return;
+//    }
 
     if (debug) {
         printDiagnosticsInformation();

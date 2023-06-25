@@ -11,9 +11,14 @@ PinDefs dir = {10, 5, 28, 13};
 PinDefs diag = {4, 3, 25, 16};
 PinDefs uart_addr = {0, 2, 1, 3};
 
-void setup_pins(PinDefs &pins, uint8_t mode) {
+void setup_pins(PinDefs &pins, uint8_t mode, uint8_t state = LOW) {
     pinMode(pins.x, mode);
     pinMode(pins.y, mode);
     pinMode(pins.z, mode);
     pinMode(pins.e, mode);
+
+    digitalWrite(pins.x, state);
+    digitalWrite(pins.y, state);
+    digitalWrite(pins.z, state);
+    digitalWrite(pins.e, state);
 }
