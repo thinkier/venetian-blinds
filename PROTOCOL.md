@@ -2,9 +2,14 @@
 
 ## SoC -> Microcontroller
 
+### StallGuard Configuration
+
+- `SGTHRS<char motor id> <u8 SGTHRS>`
+    - Set StallGuard4 threshold for the specified motor.
+
 ### Move
 
-- `M<char motor id> <i32 steps> [u8 SGTHRS=10]`
+- `M<char motor id> <i32 steps>`
     - Engage motor to move the specified steps then disengage.
 
 ### Interrupt
@@ -13,6 +18,11 @@
     - Stop motor from current move command and return current status.
 
 ## Microcontroller -> SoC
+
+### StallGuard Configuration
+
+- `SGTHRS<char motor id> <u8 SGTHRS>`
+    - Echo the response once it's set
 
 ### Move
 

@@ -3,34 +3,13 @@
 #include <pico/time.h>
 #include <TMC2209.h>
 
+#include "steps.h"
+#include "pins.h"
+
 #define RUN_CURRENT_MA 1600
 #define DEFAULT_STALL_GUARD_THRESHOLD 10
 
 critical_section_t *stepper_vars;
-
-struct Steps {
-    int32_t x;
-    int32_t y;
-    int32_t z;
-    int32_t e;
-};
-
-struct PinDefs {
-    uint8_t x;
-    uint8_t y;
-    uint8_t z;
-    uint8_t e;
-};
-
-Steps target_steps = {0, 0, 0, 0};
-Steps pending_steps = {0, 0, 0, 0};
-uint8_t stall_bitflag = 0b0000;
-
-PinDefs enn = {12, 7, 2, 15};
-PinDefs step = {11, 6, 19, 14};
-PinDefs dir = {10, 5, 28, 13};
-PinDefs diag = {4, 3, 25, 16};
-PinDefs uart_addr = {0, 2, 1, 3};
 
 TMC2209 driver_x;
 TMC2209 driver_y;
@@ -62,13 +41,6 @@ void setup() {
     Serial.println("Setup completed");
 }
 
-void setup_pins(PinDefs &pins, uint8_t mode) {
-    pinMode(pins.x, mode);
-    pinMode(pins.y, mode);
-    pinMode(pins.z, mode);
-    pinMode(pins.e, mode);
-}
-
 void setup_driver(TMC2209 &driver, uint8_t addr) {
     TMC2209::SerialAddress uart_addr;
 
@@ -88,10 +60,9 @@ void setup_driver(TMC2209 &driver, uint8_t addr) {
 
     driver.setup(Serial2, 115200, uart_addr);
     driver.setRunCurrent(RUN_CURRENT_MA / 20); // 2A Peak on TMC2209, function takes 0-100 percentage
-    stepper_driver.setMicrostepsPerStep(2);
-    stepper_driver.setHardwareEnablePin(pinEnn);
-    stepper_driver.moveUsingStepDirInterface();
-    stepper_driver.setCoolStepDurationThreshold((1 << 20) - 1);
+    driver.setMicrostepsPerStep(1); // Full stepping
+    driver.moveUsingStepDirInterface();
+    driver.setCoolStepDurationThreshold((1 << 20) - 1);
     driver.setStallGuardThreshold(DEFAULT_STALL_GUARD_THRESHOLD);
 }
 
@@ -182,24 +153,223 @@ void stepper_loop_fe() {
 
 bool debug = false;
 
-void loop() {
-    Serial.println("Enter the command DEBUG to enable stepper diagnostics.");
-    if (Serial.available()) {
-        String str = Serial.readStringUntil('\n');
-        str.trim();
-        str.toUpperCase();
+void handleDriveData() {
+    critical_section_enter_blocking(stepper_vars);
 
-        if (str.equals("DEBUG")) {
+    if (pending_steps.x == 0 && target_steps.x != 0) {
+        digitalWrite(enn.x, HIGH);
+        Serial1.print("MX ");
+        Serial1.print(target_steps.x);
+        target_steps.x = 0;
+
+        if (stall_bitflag & (1 << uart_addr.x)) {
+            Serial1.print(" STALLED");
+            stall_bitflag &= ~(1 << uart_addr.x);
+        }
+
+        Serial1.println();
+    }
+
+    if (pending_steps.y == 0 && target_steps.y != 0) {
+        digitalWrite(enn.y, HIGH);
+        Serial1.print("MY ");
+        Serial1.print(target_steps.y);
+        target_steps.y = 0;
+
+        if (stall_bitflag & (1 << uart_addr.y)) {
+            Serial1.print(" STALLED");
+            stall_bitflag &= ~(1 << uart_addr.y);
+        }
+
+        Serial1.println();
+    }
+
+    if (pending_steps.z == 0 && target_steps.z != 0) {
+        digitalWrite(enn.z, HIGH);
+        Serial1.print("MZ ");
+        Serial1.print(target_steps.z);
+        target_steps.z = 0;
+
+        if (stall_bitflag & (1 << uart_addr.z)) {
+            Serial1.print(" STALLED");
+            stall_bitflag &= ~(1 << uart_addr.z);
+        }
+
+        Serial1.println();
+    }
+
+    if (pending_steps.e == 0 && target_steps.e != 0) {
+        digitalWrite(enn.e, HIGH);
+        Serial1.print("ME ");
+        Serial1.print(target_steps.e);
+        target_steps.e = 0;
+
+        if (stall_bitflag & (1 << uart_addr.e)) {
+            Serial1.print(" STALLED");
+            stall_bitflag &= ~(1 << uart_addr.e);
+        }
+
+        Serial1.println();
+    }
+}
+
+bool debugCmdHandler() {
+    if (Serial.available()) {
+        String debug_cmd = Serial.readStringUntil('\n');
+        debug_cmd.trim();
+        debug_cmd.toUpperCase();
+
+        if (debug_cmd.equals("DEBUG")) {
             Serial.println("Enabled debug mode");
             debug = true;
+        } else if (debug_cmd.equals("TEST")) {
+            Serial.println("Spinning all motors by 200 steps.");
+
+            digitalWrite(enn.x, LOW);
+            digitalWrite(enn.y, LOW);
+            digitalWrite(enn.z, LOW);
+            digitalWrite(enn.e, LOW);
+
+            critical_section_enter_blocking(stepper_vars);
+            target_steps.x = 200;
+            pending_steps.x = 200;
+            target_steps.y = 200;
+            pending_steps.y = 200;
+            target_steps.z = 200;
+            pending_steps.z = 200;
+            target_steps.e = 200;
+            pending_steps.e = 200;
+            critical_section_exit(stepper_vars);
+        } else {
+            Serial.print("Unknown command: ");
+            Serial.println(debug_cmd);
         }
+
+        return true;
     }
-    // TODO Handle commands from Serial1
-    // TODO Handle responses to Serial1
 
-    // TODO If SerialUSB commands, print diagnostic info (adds load to Serial2)
+    return false;
+}
 
-    // TODO Use main loop to drive the ENN pin, as ENN also resets DIAG and we need that diagnostic info on the comms thread
+bool steppingCmdHandler() {
+    if (Serial1.available()) {
+        String cmd = Serial1.readStringUntil('\n');
+        cmd.trim();
+        cmd.toUpperCase();
+
+        if (cmd.startsWith("INT")) {
+            char motor = cmd.charAt(3);
+            int32_t steps;
+
+            critical_section_enter_blocking(stepper_vars);
+            switch (motor) {
+                case 'X':
+                    steps = target_steps.x - pending_steps.x;
+                    target_steps.x = 0;
+                    pending_steps.x = 0;
+                    break;
+                case 'Y':
+                    steps = target_steps.y - pending_steps.y;
+                    target_steps.y = 0;
+                    pending_steps.y = 0;
+                    break;
+                case 'Z':
+                    steps = target_steps.z - pending_steps.z;
+                    target_steps.z = 0;
+                    pending_steps.z = 0;
+                    break;
+                default:
+                    steps = target_steps.e - pending_steps.e;
+                    target_steps.e = 0;
+                    pending_steps.e = 0;
+            }
+            critical_section_exit(stepper_vars);
+
+            Serial1.print("INT");
+            Serial1.print(motor);
+            Serial1.print(" ");
+            Serial1.println(steps);
+        } else if (cmd.startsWith("M")) {
+            char motor = cmd.charAt(1);
+            int32_t steps = cmd.substring(3).toInt();
+
+            critical_section_enter_blocking(stepper_vars);
+            switch (motor) {
+                case 'X':
+                    digitalWrite(enn.x, LOW);
+                    target_steps.x += steps;
+                    pending_steps.x += steps;
+                    break;
+                case 'Y':
+                    digitalWrite(enn.y, LOW);
+                    target_steps.y += steps;
+                    pending_steps.y += steps;
+                    break;
+                case 'Z':
+                    digitalWrite(enn.z, LOW);
+                    target_steps.z += steps;
+                    pending_steps.z += steps;
+                    break;
+                default:
+                    digitalWrite(enn.e, LOW);
+                    target_steps.e += steps;
+                    pending_steps.e += steps;
+            }
+            critical_section_exit(stepper_vars);
+        } else if (cmd.startsWith("SGTHRS")) {
+            char motor = cmd.charAt(6);
+            uint8_t sgthrs = cmd.substring(8).toInt();
+
+            char usedMotor;
+            switch (motor) {
+                case 'X':
+                    usedMotor = 'X';
+                    driver_x.setStallGuardThreshold(sgthrs);
+                    break;
+                case 'Y':
+                    usedMotor = 'Y';
+                    driver_y.setStallGuardThreshold(sgthrs);
+                    break;
+                case 'Z':
+                    usedMotor = 'Z';
+                    driver_z.setStallGuardThreshold(sgthrs);
+                    break;
+                default:
+                    usedMotor = 'E';
+                    driver_e.setStallGuardThreshold(sgthrs);
+            }
+
+            Serial1.print("SGTHRS");
+            Serial1.print(usedMotor);
+            Serial1.print(" ");
+            Serial1.println(sgthrs);
+        } else {
+            Serial.print("Unknown command received on UART: ");
+            Serial.println(cmd);
+        }
+
+        return true;
+    }
+
+    return false;
+}
+
+void printDiagnosticsInformation() {}
+
+void loop() {
+    handleDriveData();
+
+    if (debugCmdHandler()) {
+        return;
+    }
+
+    if (steppingCmdHandler()) {
+        return;
+    }
+
+    if (debug) {
+        printDiagnosticsInformation();
+    }
 
     delay(100); // Prevent revving the CPU too much
 }
