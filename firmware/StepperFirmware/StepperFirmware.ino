@@ -11,7 +11,7 @@
 #define RUN_CURRENT_MA 1600
 #define DEFAULT_STALL_GUARD_THRESHOLD 10
 
-critical_section_t *stepper_vars;
+auto_init_mutex(lock);
 
 TMC2209 driver_x;
 TMC2209 driver_y;
@@ -47,7 +47,6 @@ void setup() {
 
     // Setup threads and concurrency
     Serial.println("Setting up concurrency");
-    critical_section_init(stepper_vars);
     multicore_launch_core1(stepper_setup);
 
     // Setup NeoPixel
@@ -99,9 +98,9 @@ void stepper_setup() {
 
     // 2000 steps per second on a reliable clock (hopefully)
     while (true) {
-        critical_section_enter_blocking(stepper_vars);
+        mutex_enter_blocking(&lock);
         stepper_loop_re();
-        critical_section_exit(stepper_vars);
+        mutex_exit(&lock);
 
         absolute_time_t fall = delayed_by_us(now, 500);
         absolute_time_t next = delayed_by_us(now, 500 * 2);
@@ -180,8 +179,6 @@ void stepper_loop_fe() {
 }
 
 void handleDriveData() {
-    critical_section_enter_blocking(stepper_vars);
-
     if (pending_steps.x == 0 && target_steps.x != 0) {
         digitalWrite(enn.x, HIGH);
         Serial1.print("MX ");
@@ -237,8 +234,6 @@ void handleDriveData() {
 
         Serial1.println();
     }
-
-    critical_section_exit(stepper_vars);
 }
 
 bool debugCmdHandler() {
@@ -261,7 +256,7 @@ bool debugCmdHandler() {
             digitalWrite(enn.z, LOW);
             digitalWrite(enn.e, LOW);
 
-            critical_section_enter_blocking(stepper_vars);
+            mutex_enter_blocking(&lock);
             target_steps.x = 200;
             pending_steps.x = 200;
             target_steps.y = 200;
@@ -270,7 +265,7 @@ bool debugCmdHandler() {
             pending_steps.z = 200;
             target_steps.e = 200;
             pending_steps.e = 200;
-            critical_section_exit(stepper_vars);
+            mutex_exit(&lock);
         } else {
             Serial.print("Unknown command: ");
             Serial.println(debug_cmd);
@@ -292,7 +287,7 @@ bool steppingCmdHandler() {
             char motor = cmd.charAt(3);
             int32_t steps;
 
-            critical_section_enter_blocking(stepper_vars);
+            mutex_enter_blocking(&lock);
             switch (motor) {
                 case 'X':
                     steps = target_steps.x - pending_steps.x;
@@ -314,7 +309,7 @@ bool steppingCmdHandler() {
                     target_steps.e = 0;
                     pending_steps.e = 0;
             }
-            critical_section_exit(stepper_vars);
+            mutex_exit(&lock);
 
             Serial1.print("INT");
             Serial1.print(motor);
@@ -324,7 +319,7 @@ bool steppingCmdHandler() {
             char motor = cmd.charAt(1);
             int32_t steps = cmd.substring(3).toInt();
 
-            critical_section_enter_blocking(stepper_vars);
+            mutex_enter_blocking(&lock);
             switch (motor) {
                 case 'X':
                     digitalWrite(enn.x, LOW);
@@ -346,7 +341,7 @@ bool steppingCmdHandler() {
                     target_steps.e += steps;
                     pending_steps.e += steps;
             }
-            critical_section_exit(stepper_vars);
+            mutex_exit(&lock);
         } else if (cmd.startsWith("SGTHRS")) {
             char motor = cmd.charAt(6);
             uint8_t sgthrs = cmd.substring(8).toInt();
@@ -390,15 +385,15 @@ void printDiagnosticsInformation() {
 }
 
 void loop() {
-//    handleDriveData();
+    handleDriveData();
 
-//    if (debugCmdHandler()) {
-//        return;
-//    }
+    if (debugCmdHandler()) {
+        return;
+    }
 
-//    if (steppingCmdHandler()) {
-//        return;
-//    }
+    if (steppingCmdHandler()) {
+        return;
+    }
 
     if (debug) {
         printDiagnosticsInformation();
