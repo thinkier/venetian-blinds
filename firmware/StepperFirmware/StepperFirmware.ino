@@ -8,7 +8,7 @@
 #include "steps.h"
 #include "pins.h"
 
-#define RUN_CURRENT_MA 1600
+#define RUN_CURRENT_MA 2000
 #define DEFAULT_STALL_GUARD_THRESHOLD 10
 
 auto_init_mutex(lock);
@@ -21,7 +21,7 @@ TMC2209 driver_e;
 #define PIXELS 1
 Adafruit_NeoPixel pixels(PIXELS, 24, NEO_GRB + NEO_KHZ800);
 
-bool debug = true;
+bool debug = false;
 
 
 void setup() {
@@ -40,13 +40,13 @@ void setup() {
 
     // Setup TMC2209 UART Driver
     Serial.println("Setting up stepper motor drivers");
-    setup_driver(driver_x, uart_addr.x);
-    setup_driver(driver_y, uart_addr.y);
-    setup_driver(driver_z, uart_addr.z);
-    setup_driver(driver_e, uart_addr.e);
+    setup_driver(driver_x, enn.x, uart_addr.x);
+    setup_driver(driver_y, enn.y, uart_addr.y);
+    setup_driver(driver_z, enn.z, uart_addr.z);
+    setup_driver(driver_e, enn.e, uart_addr.e);
 
-    // Setup threads and concurrency
-    Serial.println("Setting up concurrency");
+    // Launch stepper setup thread
+    Serial.println("Launching stepper thread");
     multicore_launch_core1(stepper_setup);
 
     // Setup NeoPixel
@@ -68,7 +68,7 @@ void refreshNeopixel() {
     }
 }
 
-void setup_driver(TMC2209 &driver, uint8_t addr) {
+void setup_driver(TMC2209 &driver, uint8_t enn, uint8_t addr) {
     TMC2209::SerialAddress uart_addr;
 
     switch (addr) {
@@ -88,6 +88,7 @@ void setup_driver(TMC2209 &driver, uint8_t addr) {
     driver.setup(Serial2, 115200, uart_addr);
     driver.setRunCurrent(RUN_CURRENT_MA / 20); // 2A Peak on TMC2209, function takes 0-100 percentage
     driver.setMicrostepsPerStep(1); // Full stepping
+    driver.setHardwareEnablePin(enn);
     driver.moveUsingStepDirInterface();
     driver.setCoolStepDurationThreshold((1 << 20) - 1);
     driver.setStallGuardThreshold(DEFAULT_STALL_GUARD_THRESHOLD);
@@ -102,8 +103,8 @@ void stepper_setup() {
         stepper_loop_re();
         mutex_exit(&lock);
 
-        absolute_time_t fall = delayed_by_us(now, 500);
-        absolute_time_t next = delayed_by_us(now, 500 * 2);
+        absolute_time_t fall = delayed_by_us(now, 1000);
+        absolute_time_t next = delayed_by_us(now, 2000);
 
         sleep_until(fall);
         stepper_loop_fe();
@@ -179,8 +180,10 @@ void stepper_loop_fe() {
 }
 
 void handleDriveData() {
+    mutex_enter_blocking(&lock);
+
     if (pending_steps.x == 0 && target_steps.x != 0) {
-        digitalWrite(enn.x, HIGH);
+        driver_x.disable();
         Serial1.print("MX ");
         Serial1.print(target_steps.x);
         target_steps.x = 0;
@@ -194,7 +197,7 @@ void handleDriveData() {
     }
 
     if (pending_steps.y == 0 && target_steps.y != 0) {
-        digitalWrite(enn.y, HIGH);
+        driver_y.disable();
         Serial1.print("MY ");
         Serial1.print(target_steps.y);
         target_steps.y = 0;
@@ -208,7 +211,7 @@ void handleDriveData() {
     }
 
     if (pending_steps.z == 0 && target_steps.z != 0) {
-        digitalWrite(enn.z, HIGH);
+        driver_z.disable();
         Serial1.print("MZ ");
         Serial1.print(target_steps.z);
         target_steps.z = 0;
@@ -222,7 +225,7 @@ void handleDriveData() {
     }
 
     if (pending_steps.e == 0 && target_steps.e != 0) {
-        digitalWrite(enn.e, HIGH);
+        driver_e.disable();
         Serial1.print("ME ");
         Serial1.print(target_steps.e);
         target_steps.e = 0;
@@ -234,6 +237,8 @@ void handleDriveData() {
 
         Serial1.println();
     }
+
+    mutex_exit(&lock);
 }
 
 bool debugCmdHandler() {
@@ -251,12 +256,11 @@ bool debugCmdHandler() {
         } else if (debug_cmd.equals("TEST")) {
             Serial.println("Spinning all motors by 200 steps.");
 
-            digitalWrite(enn.x, LOW);
-            digitalWrite(enn.y, LOW);
-            digitalWrite(enn.z, LOW);
-            digitalWrite(enn.e, LOW);
-
             mutex_enter_blocking(&lock);
+            driver_x.enable();
+            driver_y.enable();
+            driver_z.enable();
+            driver_e.enable();
             target_steps.x = 200;
             pending_steps.x = 200;
             target_steps.y = 200;
@@ -265,6 +269,33 @@ bool debugCmdHandler() {
             pending_steps.z = 200;
             target_steps.e = 200;
             pending_steps.e = 200;
+            mutex_exit(&lock);
+        } else if (debug_cmd.equals("TEST2")) {
+            Serial.println("Spinning all motors using firmware at 500pps for 2 seconds.");
+
+            mutex_enter_blocking(&lock);
+            driver_x.enable();
+            driver_y.enable();
+            driver_z.enable();
+            driver_e.enable();
+            driver_x.moveAtVelocity(500);
+            driver_y.moveAtVelocity(500);
+            driver_z.moveAtVelocity(500);
+            driver_e.moveAtVelocity(500);
+            mutex_exit(&lock);
+
+            delay(3000);
+
+            Serial.println("Disengaging...");
+            mutex_enter_blocking(&lock);
+            driver_x.moveUsingStepDirInterface();
+            driver_y.moveUsingStepDirInterface();
+            driver_z.moveUsingStepDirInterface();
+            driver_e.moveUsingStepDirInterface();
+            driver_x.disable();
+            driver_y.disable();
+            driver_z.disable();
+            driver_e.disable();
             mutex_exit(&lock);
         } else {
             Serial.print("Unknown command: ");
@@ -322,22 +353,22 @@ bool steppingCmdHandler() {
             mutex_enter_blocking(&lock);
             switch (motor) {
                 case 'X':
-                    digitalWrite(enn.x, LOW);
+                    driver_x.enable();
                     target_steps.x += steps;
                     pending_steps.x += steps;
                     break;
                 case 'Y':
-                    digitalWrite(enn.y, LOW);
+                    driver_y.enable();
                     target_steps.y += steps;
                     pending_steps.y += steps;
                     break;
                 case 'Z':
-                    digitalWrite(enn.z, LOW);
+                    driver_z.enable();
                     target_steps.z += steps;
                     pending_steps.z += steps;
                     break;
                 default:
-                    digitalWrite(enn.e, LOW);
+                    driver_e.enable();
                     target_steps.e += steps;
                     pending_steps.e += steps;
             }
@@ -346,6 +377,7 @@ bool steppingCmdHandler() {
             char motor = cmd.charAt(6);
             uint8_t sgthrs = cmd.substring(8).toInt();
 
+            mutex_enter_blocking(&lock);
             char usedMotor;
             switch (motor) {
                 case 'X':
@@ -364,6 +396,7 @@ bool steppingCmdHandler() {
                     usedMotor = 'E';
                     driver_e.setStallGuardThreshold(sgthrs);
             }
+            mutex_exit(&lock);
 
             Serial1.print("SGTHRS");
             Serial1.print(usedMotor);
@@ -381,7 +414,25 @@ bool steppingCmdHandler() {
 }
 
 void printDiagnosticsInformation() {
-    Serial.println("SerialUSB ping.");
+    mutex_enter_blocking(&lock);
+    Serial.print("X_SGRESULT:");
+    Serial.print(driver_x.getStallGuardResult());
+    Serial.print(",");
+
+    Serial.print("Y_SGRESULT:");
+    Serial.print(driver_y.getStallGuardResult());
+    Serial.print(",");
+
+    Serial.print("Z_SGRESULT:");
+    Serial.print(driver_z.getStallGuardResult());
+    Serial.print(",");
+
+    Serial.print("E_SGRESULT:");
+    Serial.print(driver_e.getStallGuardResult());
+    Serial.print(",");
+
+    Serial.println();
+    mutex_exit(&lock);
 }
 
 void loop() {
