@@ -36,7 +36,7 @@ void setup() {
     setup_pins(enn, OUTPUT, HIGH);
     setup_pins(step, OUTPUT);
     setup_pins(dir, OUTPUT);
-    setup_pins(diag, INPUT_PULLUP);
+    setup_pins(diag, INPUT);
 
     // Setup TMC2209 UART Driver
     Serial.println("Setting up stepper motor drivers");
@@ -87,7 +87,7 @@ void setup_driver(TMC2209 &driver, uint8_t enn, uint8_t addr) {
 
     driver.setup(Serial2, 115200, uart_addr);
     driver.setRunCurrent(RUN_CURRENT_MA / 20); // 2A Peak on TMC2209, function takes 0-100 percentage
-    driver.setMicrostepsPerStep(1); // Full stepping
+    driver.setMicrostepsPerStepPowerOfTwo(0); // Full stepping
     driver.setHardwareEnablePin(enn);
     driver.moveUsingStepDirInterface();
     driver.setCoolStepDurationThreshold((1 << 20) - 1);
@@ -99,9 +99,8 @@ void stepper_setup() {
 
     // 2000 steps per second on a reliable clock (hopefully)
     while (true) {
-        mutex_enter_blocking(&lock);
+//        stepper_loop_diag();
         stepper_loop_re();
-        mutex_exit(&lock);
 
         absolute_time_t fall = delayed_by_us(now, 1000);
         absolute_time_t next = delayed_by_us(now, 2000);
@@ -114,61 +113,95 @@ void stepper_setup() {
     }
 }
 
-void stepper_loop_re() {
-    // Template for x series
+void stepper_loop_diag() {
     if (digitalRead(diag.x) == HIGH) {
+        mutex_enter_blocking(&lock);
         pending_steps.x = 0;
         stall_bitflag |= 1 << uart_addr.x;
-    } else if (pending_steps.x > 0) {
+        mutex_exit(&lock);
+    }
+
+    if (digitalRead(diag.y) == HIGH) {
+        mutex_enter_blocking(&lock);
+        pending_steps.y = 0;
+        stall_bitflag |= 1 << uart_addr.y;
+        mutex_exit(&lock);
+    }
+
+    if (digitalRead(diag.z) == HIGH) {
+        mutex_enter_blocking(&lock);
+        pending_steps.z = 0;
+        stall_bitflag |= 1 << uart_addr.z;
+        mutex_exit(&lock);
+    }
+
+    if (digitalRead(diag.e) == HIGH) {
+        mutex_enter_blocking(&lock);
+        pending_steps.e = 0;
+        stall_bitflag |= 1 << uart_addr.e;
+        mutex_exit(&lock);
+    }
+}
+
+void stepper_loop_re() {
+    // Template for x series
+    if (pending_steps.x > 0) {
         digitalWrite(dir.x, HIGH);
         digitalWrite(step.x, HIGH);
+        mutex_enter_blocking(&lock);
         pending_steps.x--;
+        mutex_exit(&lock);
     } else if (pending_steps.x < 0) {
         digitalWrite(dir.x, LOW);
         digitalWrite(step.x, HIGH);
+        mutex_enter_blocking(&lock);
         pending_steps.x++;
+        mutex_exit(&lock);
     }
 
     // Template for y series
-    if (digitalRead(diag.y) == HIGH) {
-        pending_steps.y = 0;
-        stall_bitflag |= 1 << uart_addr.y;
-    } else if (pending_steps.y > 0) {
+    if (pending_steps.y > 0) {
         digitalWrite(dir.y, HIGH);
         digitalWrite(step.y, HIGH);
+        mutex_enter_blocking(&lock);
         pending_steps.y--;
+        mutex_exit(&lock);
     } else if (pending_steps.y < 0) {
         digitalWrite(dir.y, LOW);
         digitalWrite(step.y, HIGH);
+        mutex_enter_blocking(&lock);
         pending_steps.y++;
+        mutex_exit(&lock);
     }
 
     // Template for z series
-    if (digitalRead(diag.z) == HIGH) {
-        pending_steps.z = 0;
-        stall_bitflag |= 1 << uart_addr.z;
-    } else if (pending_steps.z > 0) {
+    if (pending_steps.z > 0) {
         digitalWrite(dir.z, HIGH);
         digitalWrite(step.z, HIGH);
+        mutex_enter_blocking(&lock);
         pending_steps.z--;
+        mutex_exit(&lock);
     } else if (pending_steps.z < 0) {
         digitalWrite(dir.z, LOW);
         digitalWrite(step.z, HIGH);
+        mutex_enter_blocking(&lock);
         pending_steps.z++;
+        mutex_exit(&lock);
     }
 
     // Template for e series
-    if (digitalRead(diag.e) == HIGH) {
-        pending_steps.e = 0;
-        stall_bitflag |= 1 << uart_addr.e;
-    } else if (pending_steps.e > 0) {
+    if (pending_steps.e > 0) {
         digitalWrite(dir.e, HIGH);
         digitalWrite(step.e, HIGH);
+        mutex_enter_blocking(&lock);
         pending_steps.e--;
+        mutex_exit(&lock);
     } else if (pending_steps.e < 0) {
         digitalWrite(dir.e, LOW);
         digitalWrite(step.e, HIGH);
+        mutex_enter_blocking(&lock);
         pending_steps.e++;
+        mutex_exit(&lock);
     }
 }
 
@@ -180,230 +213,273 @@ void stepper_loop_fe() {
 }
 
 void handleDriveData() {
-    mutex_enter_blocking(&lock);
-
     if (pending_steps.x == 0 && target_steps.x != 0) {
-        driver_x.disable();
+        digitalWrite(enn.x, HIGH);
         Serial1.print("MX ");
         Serial1.print(target_steps.x);
         target_steps.x = 0;
 
         if (stall_bitflag & (1 << uart_addr.x)) {
             Serial1.print(" STALLED");
+            mutex_enter_blocking(&lock);
             stall_bitflag &= ~(1 << uart_addr.x);
+            mutex_exit(&lock);
         }
 
         Serial1.println();
     }
 
     if (pending_steps.y == 0 && target_steps.y != 0) {
-        driver_y.disable();
+        digitalWrite(enn.y, HIGH);
         Serial1.print("MY ");
         Serial1.print(target_steps.y);
         target_steps.y = 0;
 
         if (stall_bitflag & (1 << uart_addr.y)) {
             Serial1.print(" STALLED");
+            mutex_enter_blocking(&lock);
             stall_bitflag &= ~(1 << uart_addr.y);
+            mutex_exit(&lock);
         }
 
         Serial1.println();
     }
 
     if (pending_steps.z == 0 && target_steps.z != 0) {
-        driver_z.disable();
+        digitalWrite(enn.z, HIGH);
         Serial1.print("MZ ");
         Serial1.print(target_steps.z);
         target_steps.z = 0;
 
         if (stall_bitflag & (1 << uart_addr.z)) {
             Serial1.print(" STALLED");
+            mutex_enter_blocking(&lock);
             stall_bitflag &= ~(1 << uart_addr.z);
+            mutex_exit(&lock);
         }
 
         Serial1.println();
     }
 
     if (pending_steps.e == 0 && target_steps.e != 0) {
-        driver_e.disable();
+        digitalWrite(enn.e, HIGH);
         Serial1.print("ME ");
         Serial1.print(target_steps.e);
         target_steps.e = 0;
 
         if (stall_bitflag & (1 << uart_addr.e)) {
             Serial1.print(" STALLED");
+            mutex_enter_blocking(&lock);
             stall_bitflag &= ~(1 << uart_addr.e);
+            mutex_exit(&lock);
         }
 
         Serial1.println();
     }
-
-    mutex_exit(&lock);
 }
 
-bool debugCmdHandler() {
-    if (Serial.available()) {
-        String debug_cmd = Serial.readStringUntil('\n');
-        debug_cmd.trim();
-        debug_cmd.toUpperCase();
+bool debugCmdHandler(HardwareSerial &port, String debug_cmd) {
+    if (debug_cmd.equals("DEBUG")) {
+        debug = !debug;
+        port.print("Toggled debug mode: debug=");
+        port.println(debug);
 
-        if (debug_cmd.equals("DEBUG")) {
-            debug = !debug;
-            Serial.print("Toggled debug mode: debug=");
-            Serial.println(debug);
+        refreshNeopixel();
+    } else if (debug_cmd.equals("RESET")) {
+        digitalWrite(enn.x, LOW);
+        digitalWrite(enn.y, LOW);
+        digitalWrite(enn.z, LOW);
+        digitalWrite(enn.e, LOW);
+        port.println("Engaged all motors for 100ms...");
+        delay(100);
+        digitalWrite(enn.x, HIGH);
+        digitalWrite(enn.y, HIGH);
+        digitalWrite(enn.z, HIGH);
+        digitalWrite(enn.e, HIGH);
+        port.println("Disengaged all motors.");
+    } else if (debug_cmd.equals("TEST")) {
+        port.println("Spinning all motors by 200 steps.");
 
-            refreshNeopixel();
-        } else if (debug_cmd.equals("TEST")) {
-            Serial.println("Spinning all motors by 200 steps.");
+        driver_x.enable();
+        driver_y.enable();
+        driver_z.enable();
+        driver_e.enable();
+        target_steps.x = 200;
+        target_steps.y = 200;
+        target_steps.z = 200;
+        target_steps.e = 200;
+        mutex_enter_blocking(&lock);
+        pending_steps.x = 200;
+        pending_steps.y = 200;
+        pending_steps.z = 200;
+        pending_steps.e = 200;
+        mutex_exit(&lock);
+    } else if (debug_cmd.equals("TEST2")) {
+        port.println("Spinning all motors using firmware at 500pps for 2 seconds.");
 
-            mutex_enter_blocking(&lock);
-            driver_x.enable();
-            driver_y.enable();
-            driver_z.enable();
-            driver_e.enable();
-            target_steps.x = 200;
-            pending_steps.x = 200;
-            target_steps.y = 200;
-            pending_steps.y = 200;
-            target_steps.z = 200;
-            pending_steps.z = 200;
-            target_steps.e = 200;
-            pending_steps.e = 200;
-            mutex_exit(&lock);
-        } else if (debug_cmd.equals("TEST2")) {
-            Serial.println("Spinning all motors using firmware at 500pps for 2 seconds.");
+        driver_x.moveAtVelocity(500);
+        driver_y.moveAtVelocity(500);
+        driver_z.moveAtVelocity(500);
+        driver_e.moveAtVelocity(500);
+        driver_x.enable();
+        driver_y.enable();
+        driver_z.enable();
+        driver_e.enable();
 
-            mutex_enter_blocking(&lock);
-            driver_x.enable();
-            driver_y.enable();
-            driver_z.enable();
-            driver_e.enable();
-            driver_x.moveAtVelocity(500);
-            driver_y.moveAtVelocity(500);
-            driver_z.moveAtVelocity(500);
-            driver_e.moveAtVelocity(500);
-            mutex_exit(&lock);
+        delay(3000);
 
-            delay(3000);
+        port.println("Disengaging...");
+        driver_x.moveUsingStepDirInterface();
+        driver_y.moveUsingStepDirInterface();
+        driver_z.moveUsingStepDirInterface();
+        driver_e.moveUsingStepDirInterface();
+        driver_x.disable();
+        driver_y.disable();
+        driver_z.disable();
+        driver_e.disable();
+    } else {
+        return false;
+    }
+    return true;
+}
 
-            Serial.println("Disengaging...");
-            mutex_enter_blocking(&lock);
-            driver_x.moveUsingStepDirInterface();
-            driver_y.moveUsingStepDirInterface();
-            driver_z.moveUsingStepDirInterface();
-            driver_e.moveUsingStepDirInterface();
-            driver_x.disable();
-            driver_y.disable();
-            driver_z.disable();
-            driver_e.disable();
-            mutex_exit(&lock);
-        } else {
-            Serial.print("Unknown command: ");
-            Serial.println(debug_cmd);
+bool steppingCmdHandler(HardwareSerial &port, String cmd) {
+    if (cmd.startsWith("INT")) {
+        char motor = cmd.charAt(3);
+        int32_t steps;
+
+        mutex_enter_blocking(&lock);
+        switch (motor) {
+            case 'X':
+                steps = target_steps.x - pending_steps.x;
+                target_steps.x = 0;
+                pending_steps.x = 0;
+                break;
+            case 'Y':
+                steps = target_steps.y - pending_steps.y;
+                target_steps.y = 0;
+                pending_steps.y = 0;
+                break;
+            case 'Z':
+                steps = target_steps.z - pending_steps.z;
+                target_steps.z = 0;
+                pending_steps.z = 0;
+                break;
+            default:
+                steps = target_steps.e - pending_steps.e;
+                target_steps.e = 0;
+                pending_steps.e = 0;
+        }
+        mutex_exit(&lock);
+
+        port.print("INT");
+        port.print(motor);
+        port.print(" ");
+        port.println(steps);
+    } else if (cmd.startsWith("M")) {
+        char motor = cmd.charAt(1);
+        int32_t steps = cmd.substring(3).toInt();
+
+        mutex_enter_blocking(&lock);
+        switch (motor) {
+            case 'X':
+                driver_x.enable();
+                target_steps.x += steps;
+                pending_steps.x += steps;
+                break;
+            case 'Y':
+                driver_y.enable();
+                target_steps.y += steps;
+                pending_steps.y += steps;
+                break;
+            case 'Z':
+                driver_z.enable();
+                target_steps.z += steps;
+                pending_steps.z += steps;
+                break;
+            default:
+                driver_e.enable();
+                target_steps.e += steps;
+                pending_steps.e += steps;
+        }
+        mutex_exit(&lock);
+    } else if (cmd.startsWith("SGTHRS")) {
+        char motor = cmd.charAt(6);
+        uint8_t sgthrs = cmd.substring(8).toInt();
+
+        char usedMotor;
+        switch (motor) {
+            case 'X':
+                usedMotor = 'X';
+                driver_x.setStallGuardThreshold(sgthrs);
+                break;
+            case 'Y':
+                usedMotor = 'Y';
+                driver_y.setStallGuardThreshold(sgthrs);
+                break;
+            case 'Z':
+                usedMotor = 'Z';
+                driver_z.setStallGuardThreshold(sgthrs);
+                break;
+            default:
+                usedMotor = 'E';
+                driver_e.setStallGuardThreshold(sgthrs);
         }
 
-        return true;
+        port.print("SGTHRS");
+        port.print(usedMotor);
+        port.print(" ");
+        port.println(sgthrs);
+    } else {
+        return false;
     }
-
-    return false;
+    return true;
 }
 
-bool steppingCmdHandler() {
-    if (Serial1.available()) {
-        String cmd = Serial1.readStringUntil('\n');
-        cmd.trim();
-        cmd.toUpperCase();
+void printDiagnosticsInformation() {
+    Serial.print("X_SGRESULT:");
+    Serial.print(driver_x.getStallGuardResult());
+    Serial.print(",");
+    Serial.print("X_DIAG:");
+    Serial.print(digitalRead(diag.x));
+    Serial.print(",");
 
-        if (cmd.startsWith("INT")) {
-            char motor = cmd.charAt(3);
-            int32_t steps;
+    Serial.print("Y_SGRESULT:");
+    Serial.print(driver_y.getStallGuardResult());
+    Serial.print(",");
+    Serial.print("Y_DIAG:");
+    Serial.print(digitalRead(diag.y));
+    Serial.print(",");
 
-            mutex_enter_blocking(&lock);
-            switch (motor) {
-                case 'X':
-                    steps = target_steps.x - pending_steps.x;
-                    target_steps.x = 0;
-                    pending_steps.x = 0;
-                    break;
-                case 'Y':
-                    steps = target_steps.y - pending_steps.y;
-                    target_steps.y = 0;
-                    pending_steps.y = 0;
-                    break;
-                case 'Z':
-                    steps = target_steps.z - pending_steps.z;
-                    target_steps.z = 0;
-                    pending_steps.z = 0;
-                    break;
-                default:
-                    steps = target_steps.e - pending_steps.e;
-                    target_steps.e = 0;
-                    pending_steps.e = 0;
-            }
-            mutex_exit(&lock);
+    Serial.print("Z_SGRESULT:");
+    Serial.print(driver_z.getStallGuardResult());
+    Serial.print(",");
+    Serial.print("Z_DIAG:");
+    Serial.print(digitalRead(diag.z));
+    Serial.print(",");
 
-            Serial1.print("INT");
-            Serial1.print(motor);
-            Serial1.print(" ");
-            Serial1.println(steps);
-        } else if (cmd.startsWith("M")) {
-            char motor = cmd.charAt(1);
-            int32_t steps = cmd.substring(3).toInt();
+    Serial.print("E_SGRESULT:");
+    Serial.print(driver_e.getStallGuardResult());
+    Serial.print(",");
+    Serial.print("E_DIAG:");
+    Serial.print(digitalRead(diag.e));
 
-            mutex_enter_blocking(&lock);
-            switch (motor) {
-                case 'X':
-                    driver_x.enable();
-                    target_steps.x += steps;
-                    pending_steps.x += steps;
-                    break;
-                case 'Y':
-                    driver_y.enable();
-                    target_steps.y += steps;
-                    pending_steps.y += steps;
-                    break;
-                case 'Z':
-                    driver_z.enable();
-                    target_steps.z += steps;
-                    pending_steps.z += steps;
-                    break;
-                default:
-                    driver_e.enable();
-                    target_steps.e += steps;
-                    pending_steps.e += steps;
-            }
-            mutex_exit(&lock);
-        } else if (cmd.startsWith("SGTHRS")) {
-            char motor = cmd.charAt(6);
-            uint8_t sgthrs = cmd.substring(8).toInt();
+    Serial.println();
+}
 
-            mutex_enter_blocking(&lock);
-            char usedMotor;
-            switch (motor) {
-                case 'X':
-                    usedMotor = 'X';
-                    driver_x.setStallGuardThreshold(sgthrs);
-                    break;
-                case 'Y':
-                    usedMotor = 'Y';
-                    driver_y.setStallGuardThreshold(sgthrs);
-                    break;
-                case 'Z':
-                    usedMotor = 'Z';
-                    driver_z.setStallGuardThreshold(sgthrs);
-                    break;
-                default:
-                    usedMotor = 'E';
-                    driver_e.setStallGuardThreshold(sgthrs);
-            }
-            mutex_exit(&lock);
+String parseCommand(HardwareSerial &port) {
+    String cmd = port.readStringUntil('\n');
+    cmd.trim();
+    cmd.toUpperCase();
+    return cmd;
+}
 
-            Serial1.print("SGTHRS");
-            Serial1.print(usedMotor);
-            Serial1.print(" ");
-            Serial1.println(sgthrs);
-        } else {
-            Serial.print("Unknown command received on UART: ");
+bool handlerSerialUSB() {
+    if (Serial.available()) {
+        String cmd = parseCommand(Serial);
+
+        if (!(debugCmdHandler(Serial, cmd) || steppingCmdHandler(Serial, cmd))) {
+            Serial.print("Unknown command: ");
             Serial.println(cmd);
         }
 
@@ -413,36 +489,25 @@ bool steppingCmdHandler() {
     return false;
 }
 
-void printDiagnosticsInformation() {
-    mutex_enter_blocking(&lock);
-    Serial.print("X_SGRESULT:");
-    Serial.print(driver_x.getStallGuardResult());
-    Serial.print(",");
+bool handlerSerial1() {
+    if (Serial1.available()) {
+        String cmd = parseCommand(Serial1);
 
-    Serial.print("Y_SGRESULT:");
-    Serial.print(driver_y.getStallGuardResult());
-    Serial.print(",");
+        if (!steppingCmdHandler(Serial1, cmd)) {
+            Serial.print("Unknown command on UART: ");
+            Serial.println(cmd);
+        }
 
-    Serial.print("Z_SGRESULT:");
-    Serial.print(driver_z.getStallGuardResult());
-    Serial.print(",");
+        return true;
+    }
 
-    Serial.print("E_SGRESULT:");
-    Serial.print(driver_e.getStallGuardResult());
-    Serial.print(",");
-
-    Serial.println();
-    mutex_exit(&lock);
+    return false;
 }
 
 void loop() {
     handleDriveData();
 
-    if (debugCmdHandler()) {
-        return;
-    }
-
-    if (steppingCmdHandler()) {
+    if (handlerSerialUSB() || handlerSerial1()) {
         return;
     }
 
