@@ -1,3 +1,4 @@
+#include <hardware/watchdog.h>
 #include <pico/multicore.h>
 #include <pico/sync.h>
 #include <pico/time.h>
@@ -9,7 +10,10 @@
 #include "pins.h"
 
 #define RUN_CURRENT_MA 2000
-#define DEFAULT_STALL_GUARD_THRESHOLD 10
+#define DEFAULT_STALL_GUARD_THRESHOLD 50
+#define MICROSTEPS_LOG2 2
+#define PHASE_PER_SECOND 250
+#define CYCLE_US ((1000000 >> MICROSTEPS_LOG2) / PHASE_PER_SECOND)
 
 auto_init_mutex(lock);
 
@@ -36,13 +40,13 @@ void setup() {
     setup_pins(enn, OUTPUT, HIGH);
     setup_pins(step, OUTPUT);
     setup_pins(dir, OUTPUT);
-    setup_pins(diag, INPUT);
+    setup_pins(diag, INPUT_PULLDOWN);
 
     // Setup TMC2209 UART Driver
     Serial.println("Setting up stepper motor drivers");
-    setup_driver(driver_x, enn.x, uart_addr.x);
-    setup_driver(driver_y, enn.y, uart_addr.y);
-    setup_driver(driver_z, enn.z, uart_addr.z);
+    // setup_driver(driver_x, enn.x, uart_addr.x);
+    // setup_driver(driver_y, enn.y, uart_addr.y);
+    // setup_driver(driver_z, enn.z, uart_addr.z);
     setup_driver(driver_e, enn.e, uart_addr.e);
 
     // Launch stepper setup thread
@@ -87,7 +91,7 @@ void setup_driver(TMC2209 &driver, uint8_t enn, uint8_t addr) {
 
     driver.setup(Serial2, 115200, uart_addr);
     driver.setRunCurrent(RUN_CURRENT_MA / 20); // 2A Peak on TMC2209, function takes 0-100 percentage
-    driver.setMicrostepsPerStepPowerOfTwo(0); // Full stepping
+    driver.setMicrostepsPerStepPowerOfTwo(MICROSTEPS_LOG2);
     driver.setHardwareEnablePin(enn);
     driver.moveUsingStepDirInterface();
     driver.setCoolStepDurationThreshold((1 << 20) - 1);
@@ -99,11 +103,11 @@ void stepper_setup() {
 
     // 2000 steps per second on a reliable clock (hopefully)
     while (true) {
-//        stepper_loop_diag();
+        stepper_loop_diag();
         stepper_loop_re();
 
-        absolute_time_t fall = delayed_by_us(now, 1000);
-        absolute_time_t next = delayed_by_us(now, 2000);
+        absolute_time_t fall = delayed_by_us(now, CYCLE_US >> 1);
+        absolute_time_t next = delayed_by_us(now, CYCLE_US);
 
         sleep_until(fall);
         stepper_loop_fe();
@@ -116,28 +120,28 @@ void stepper_setup() {
 void stepper_loop_diag() {
     if (digitalRead(diag.x) == HIGH) {
         mutex_enter_blocking(&lock);
-        pending_steps.x = 0;
+//        pending_steps.x = 0;
         stall_bitflag |= 1 << uart_addr.x;
         mutex_exit(&lock);
     }
 
     if (digitalRead(diag.y) == HIGH) {
         mutex_enter_blocking(&lock);
-        pending_steps.y = 0;
+//        pending_steps.y = 0;
         stall_bitflag |= 1 << uart_addr.y;
         mutex_exit(&lock);
     }
 
     if (digitalRead(diag.z) == HIGH) {
         mutex_enter_blocking(&lock);
-        pending_steps.z = 0;
+//        pending_steps.z = 0;
         stall_bitflag |= 1 << uart_addr.z;
         mutex_exit(&lock);
     }
 
     if (digitalRead(diag.e) == HIGH) {
         mutex_enter_blocking(&lock);
-        pending_steps.e = 0;
+//        pending_steps.e = 0;
         stall_bitflag |= 1 << uart_addr.e;
         mutex_exit(&lock);
     }
@@ -214,9 +218,9 @@ void stepper_loop_fe() {
 
 void handleDriveData() {
     if (pending_steps.x == 0 && target_steps.x != 0) {
-        digitalWrite(enn.x, HIGH);
+        driver_x.disable();
         Serial1.print("MX ");
-        Serial1.print(target_steps.x);
+        Serial1.print(target_steps.x >> MICROSTEPS_LOG2);
         target_steps.x = 0;
 
         if (stall_bitflag & (1 << uart_addr.x)) {
@@ -230,9 +234,9 @@ void handleDriveData() {
     }
 
     if (pending_steps.y == 0 && target_steps.y != 0) {
-        digitalWrite(enn.y, HIGH);
+        driver_y.disable();
         Serial1.print("MY ");
-        Serial1.print(target_steps.y);
+        Serial1.print(target_steps.y >> MICROSTEPS_LOG2);
         target_steps.y = 0;
 
         if (stall_bitflag & (1 << uart_addr.y)) {
@@ -246,9 +250,9 @@ void handleDriveData() {
     }
 
     if (pending_steps.z == 0 && target_steps.z != 0) {
-        digitalWrite(enn.z, HIGH);
+        driver_z.disable();
         Serial1.print("MZ ");
-        Serial1.print(target_steps.z);
+        Serial1.print(target_steps.z >> MICROSTEPS_LOG2);
         target_steps.z = 0;
 
         if (stall_bitflag & (1 << uart_addr.z)) {
@@ -262,9 +266,9 @@ void handleDriveData() {
     }
 
     if (pending_steps.e == 0 && target_steps.e != 0) {
-        digitalWrite(enn.e, HIGH);
+        driver_e.disable();
         Serial1.print("ME ");
-        Serial1.print(target_steps.e);
+        Serial1.print(target_steps.e >> MICROSTEPS_LOG2);
         target_steps.e = 0;
 
         if (stall_bitflag & (1 << uart_addr.e)) {
@@ -297,6 +301,8 @@ bool debugCmdHandler(HardwareSerial &port, String debug_cmd) {
         digitalWrite(enn.z, HIGH);
         digitalWrite(enn.e, HIGH);
         port.println("Disengaged all motors.");
+    } else if (debug_cmd.equals("HARDRESET")) {
+        watchdog_enable(1, true);
     } else if (debug_cmd.equals("TEST")) {
         port.println("Spinning all motors by 200 steps.");
 
@@ -315,7 +321,7 @@ bool debugCmdHandler(HardwareSerial &port, String debug_cmd) {
         pending_steps.e = 200;
         mutex_exit(&lock);
     } else if (debug_cmd.equals("TEST2")) {
-        port.println("Spinning all motors using firmware at 500pps for 2 seconds.");
+        port.println("Spinning all motors using firmware at 500 for 2 seconds.");
 
         driver_x.moveAtVelocity(500);
         driver_y.moveAtVelocity(500);
@@ -326,7 +332,7 @@ bool debugCmdHandler(HardwareSerial &port, String debug_cmd) {
         driver_z.enable();
         driver_e.enable();
 
-        delay(3000);
+        delay(2000);
 
         port.println("Disengaging...");
         driver_x.moveUsingStepDirInterface();
@@ -380,29 +386,39 @@ bool steppingCmdHandler(HardwareSerial &port, String cmd) {
         char motor = cmd.charAt(1);
         int32_t steps = cmd.substring(3).toInt();
 
-        mutex_enter_blocking(&lock);
         switch (motor) {
             case 'X':
                 driver_x.enable();
-                target_steps.x += steps;
-                pending_steps.x += steps;
+
+                mutex_enter_blocking(&lock);
+                target_steps.x += steps << MICROSTEPS_LOG2;
+                pending_steps.x += steps << MICROSTEPS_LOG2;
+                mutex_exit(&lock);
                 break;
             case 'Y':
                 driver_y.enable();
-                target_steps.y += steps;
-                pending_steps.y += steps;
+
+                mutex_enter_blocking(&lock);
+                target_steps.y += steps << MICROSTEPS_LOG2;
+                pending_steps.y += steps << MICROSTEPS_LOG2;
+                mutex_exit(&lock);
                 break;
             case 'Z':
                 driver_z.enable();
-                target_steps.z += steps;
-                pending_steps.z += steps;
+
+                mutex_enter_blocking(&lock);
+                target_steps.z += steps << MICROSTEPS_LOG2;
+                pending_steps.z += steps << MICROSTEPS_LOG2;
+                mutex_exit(&lock);
                 break;
             default:
                 driver_e.enable();
-                target_steps.e += steps;
-                pending_steps.e += steps;
+
+                mutex_enter_blocking(&lock);
+                target_steps.e += steps << MICROSTEPS_LOG2;
+                pending_steps.e += steps << MICROSTEPS_LOG2;
+                mutex_exit(&lock);
         }
-        mutex_exit(&lock);
     } else if (cmd.startsWith("SGTHRS")) {
         char motor = cmd.charAt(6);
         uint8_t sgthrs = cmd.substring(8).toInt();
@@ -436,33 +452,37 @@ bool steppingCmdHandler(HardwareSerial &port, String cmd) {
     return true;
 }
 
+bool isStalling(uint8_t uart_addr) {
+    return (stall_bitflag >> uart_addr) & 1;
+}
+
 void printDiagnosticsInformation() {
     Serial.print("X_SGRESULT:");
     Serial.print(driver_x.getStallGuardResult());
     Serial.print(",");
     Serial.print("X_DIAG:");
-    Serial.print(digitalRead(diag.x));
+    Serial.print(isStalling(uart_addr.x) * 100);
     Serial.print(",");
 
     Serial.print("Y_SGRESULT:");
     Serial.print(driver_y.getStallGuardResult());
     Serial.print(",");
     Serial.print("Y_DIAG:");
-    Serial.print(digitalRead(diag.y));
+    Serial.print(isStalling(uart_addr.y) * 100);
     Serial.print(",");
 
     Serial.print("Z_SGRESULT:");
     Serial.print(driver_z.getStallGuardResult());
     Serial.print(",");
     Serial.print("Z_DIAG:");
-    Serial.print(digitalRead(diag.z));
+    Serial.print(isStalling(uart_addr.z) * 100);
     Serial.print(",");
 
     Serial.print("E_SGRESULT:");
     Serial.print(driver_e.getStallGuardResult());
     Serial.print(",");
     Serial.print("E_DIAG:");
-    Serial.print(digitalRead(diag.e));
+    Serial.print(isStalling(uart_addr.e) * 100);
 
     Serial.println();
 }

@@ -13,9 +13,10 @@ const long SERIAL_BAUD_RATE = 2000000;
 const uint8_t RUN_CURRENT_PERCENT = 80;
 const uint8_t SGTHRS = 10;
 
-const uint8_t pinEnn = 12;
-const uint8_t pinStep = 11;
-const uint8_t pinDiag = 4;
+const TMC2209::SerialAddress uartAddress = TMC2209::SerialAddress::SERIAL_ADDRESS_3;
+const uint8_t pinEnn = 15;
+const uint8_t pinStep = 14;
+const uint8_t pinDiag = 16;
 
 
 // Instantiate TMC2209
@@ -26,7 +27,7 @@ void setup() {
     pinMode(pinDiag, INPUT_PULLUP);
     Serial.begin(SERIAL_BAUD_RATE);
 
-    stepper_driver.setup(serial_stream);
+    stepper_driver.setup(serial_stream, 115200, uartAddress);
 
     stepper_driver.setRunCurrent(RUN_CURRENT_PERCENT);
     stepper_driver.setStallGuardThreshold(SGTHRS);
