@@ -1,3 +1,5 @@
+#![feature(async_closure)]
+
 #[macro_use]
 extern crate log;
 #[macro_use]
@@ -10,28 +12,30 @@ use hap::{
     storage::FileStorage,
     Result,
 };
-use crate::controller::{Controller};
-use crate::controller::config::ControllerConfig;
+use crate::model::config::ControllersConfig;
+use crate::model::controller::Controllers;
 
-mod server;
-mod controller;
+mod imp;
+mod model;
+mod proxy;
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    std::env::set_var("RUST_LOG", "hap=debug,libmdns=error,info");
+    if std::env::var("RUST_LOG").is_err() {
+        std::env::set_var("RUST_LOG", "proxy=debug,libmdns=error,info");
+    }
     env_logger::init();
 
     let mut storage = FileStorage::current_dir().await?;
-    let config = server::config::get(&mut storage).await?;
+    let config = proxy::config::get(&mut storage).await?;
 
-    let controller = Controller::from_config(ControllerConfig::load().await?)?;
+    let controllers = Controllers::from_config(ControllersConfig::load().await?)?;
 
     let server = IpServer::new(config, storage).await?;
-    server.add_accessory(server::bridge::get()).await?;
+    server.add_accessory(proxy::bridge::get()).await?;
 
-    let mut index = 0;
-    for name in controller.config.blinds.keys() {
-        server.add_accessory(server::accessory::get(controller.get_instance(name), index)).await?;
+    for (i, name) in controllers.config.blinds.keys().enumerate() {
+        server.add_accessory(proxy::accessory::get(controllers.get_instance(name), name.as_ref(), i)).await?;
     }
 
     server.run_handle().await?;

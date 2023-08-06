@@ -1,18 +1,4 @@
-serial_port = "/dev/ttyAMA0"
-serial_baud_rate = 2000000
-
-[blinds]
-
-[blinds.center]
-address = 1
-driver_sgthrs = 50
-steps_to_extend = 60000
-steps_to_tilt = 2000
-tilt_sgthrs = 50
-
-[blinds.right]
-address = 2
-steps_to_extend = 60000
-extend_sgthrs = 50
-steps_to_tilt = 2000
-tilt_sgthrs = 50
+[blinds.Left]
+channel = 0
+period_extend = 60000
+period_tilt = 2000

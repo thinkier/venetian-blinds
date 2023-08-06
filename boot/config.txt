@@ -1,4 +1,2 @@
-dtoverlay=disable-bt
-
 [all]
-enable_uart=1
+dtoverlay=pwm-2chan
