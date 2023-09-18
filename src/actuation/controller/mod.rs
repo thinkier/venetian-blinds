@@ -17,19 +17,17 @@ pub struct Controllers {
 
 #[derive(Clone, Debug)]
 pub struct Controller {
-    pub(crate) activity: Arc<Semaphore>,
-    pub(crate) inner: Arc<RwLock<InnerController>>,
-    pub(crate) pwm_duration: Arc<SyncRwLock<Duration>>,
+    activity: Arc<Semaphore>,
+    inner: Arc<RwLock<InnerController>>,
 }
 
 #[derive(Debug)]
 pub struct InnerController {
     #[cfg(feature = "raspi_pwm")]
-    pub(crate) pwm: Pwm,
+    pwm: Pwm,
     #[cfg(feature = "raspi_pwm")]
-    pub(crate) in_pin: InputPin,
-    pub(crate) tilt: f32,
-    pub(crate) position: f32,
+    tilt: f32,
+    position: f32,
     pub config: VenetianBlind,
 }
 

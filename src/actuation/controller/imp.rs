@@ -37,20 +37,15 @@ impl Controller {
 
         info!("Initializing PWM on channel {}", config.channel);
         let pwm = Pwm::with_period(channel, Duration::from_millis(20), Duration::from_micros(1500), Polarity::Normal, true).unwrap();
-        let mut in_pin: InputPin = Gpio::new()?.get(config.feedback_pin)?.into_input();
-
-        let pwm_duration = Arc::new(SyncRwLock::new(Duration::from_millis(0)));
 
         Ok(Controller {
             activity: Arc::new(Semaphore::new(1)),
             inner: Arc::new(RwLock::new(InnerController {
                 pwm,
-                in_pin,
                 tilt: -90.0,
                 position: 0.0,
                 config,
             })),
-            pwm_duration,
         })
     }
 
@@ -63,8 +58,7 @@ impl Controller {
                 tilt: -90f32,
                 position: 0f32,
                 config,
-            })),
-            pwm_duration: Arc::new(SyncRwLock::new(Duration::from_millis(0))),
+            }))
         })
     }
 
@@ -123,49 +117,6 @@ impl Controller {
     pub async fn stop_moving(&self) {
         #[cfg(feature = "raspi_pwm")]
         self.inner.read().await.pwm.set_pulse_width(Duration::from_micros(1500)).unwrap();
-    }
-
-    /// Radial position in terms of radians
-    pub async fn get_radial_position(&self) -> Result<f32, JoinError> {
-        let (freq, min, max) = {
-            let config = &self.inner.read().await.config;
-            (config.feedback_freq, config.feedback_duty_cycle_lower_bound, config.feedback_duty_cycle_upper_bound)
-        };
-
-        let pwm_duration = Arc::clone(&self.pwm_duration);
-
-        tokio::task::spawn_blocking(move || {
-            let mut phase_d = Duration::from_secs(1).div_f32(freq as f32).as_nanos() as f32;
-            let mut d = pwm_duration.read().as_nanos() as f32;
-            d -= min * phase_d;
-            d /= max - min;
-            phase_d *= max - min;
-            return PI * 2.0 * d / phase_d;
-        }).await
-    }
-
-    pub async fn enable_feedback(&self) {
-        let pwm_duration = Arc::clone(&self.pwm_duration);
-        let last_time = Arc::new(SyncRwLock::new(Instant::now()));
-        #[cfg(feature = "raspi_pwm")]
-        self.inner.write().await.in_pin.set_async_interrupt(Trigger::Both, move |level| {
-            let now = Instant::now();
-            match level {
-                Level::High => {
-                    *last_time.write() = now;
-                }
-                Level::Low => {
-                    let last_time = { *last_time.read() };
-                    let cur = now.duration_since(last_time);
-                    let last = mem::replace(&mut *pwm_duration.write(), cur);
-                }
-            }
-        }).expect("failed to attach interrupt timer");
-    }
-
-    pub async fn disable_feedback(&self) {
-        #[cfg(feature = "raspi_pwm")]
-        self.inner.write().await.in_pin.clear_async_interrupt().unwrap();
     }
 }
 

@@ -16,6 +16,8 @@ use crate::actuation::config::ControllersConfig;
 use crate::actuation::controller::Controllers;
 
 mod actuation;
+#[cfg(feature = "raspi_pwm")]
+mod feedback;
 mod proxy;
 
 #[tokio::main]
