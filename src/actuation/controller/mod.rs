@@ -6,7 +6,9 @@ use rppal::gpio::InputPin;
 #[cfg(feature = "raspi_pwm")]
 use rppal::pwm::Pwm;
 use tokio::sync::{RwLock, Semaphore};
-use crate::model::config::{ControllersConfig, VenetianBlind};
+use crate::actuation::config::{ControllersConfig, VenetianBlind};
+
+pub mod imp;
 
 #[derive(Debug)]
 pub struct Controllers {

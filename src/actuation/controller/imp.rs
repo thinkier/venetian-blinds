@@ -4,8 +4,8 @@ use std::f32::consts::PI;
 use std::mem;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
-use crate::model::config::{ControllersConfig, VenetianBlind};
-use crate::model::controller::{Controller, Controllers, InnerController};
+use crate::actuation::config::{ControllersConfig, VenetianBlind};
+use crate::actuation::controller::{Controller, Controllers, InnerController};
 use hap::Result as HapResult;
 use tokio::sync::{RwLock, Semaphore};
 #[cfg(feature = "raspi_pwm")]

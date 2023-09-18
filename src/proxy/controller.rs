@@ -1,6 +1,6 @@
 use hap::characteristic::OnUpdateFuture;
 use hap::futures::FutureExt;
-use crate::model::controller::Controller;
+use crate::actuation::controller::Controller;
 
 impl Controller {
     pub fn update_tilt_async(&'static self) -> impl OnUpdateFuture<i32> {

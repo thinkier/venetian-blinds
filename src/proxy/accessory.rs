@@ -4,7 +4,7 @@ use hap::accessory::window_covering::WindowCoveringAccessory;
 use hap::characteristic::{AsyncCharacteristicCallbacks, CharacteristicCallbacks};
 use hap::futures::FutureExt;
 use hap::service::window_covering::WindowCoveringService;
-use crate::model::controller::Controller;
+use crate::actuation::controller::Controller;
 
 pub fn get(ctr: Controller, name: &str, index: usize) -> impl HapAccessory {
     let mut venetian = WindowCoveringAccessory::new((2 + index) as u64, AccessoryInformation {

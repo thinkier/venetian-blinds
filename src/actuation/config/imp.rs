@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use crate::model::config::ControllersConfig;
+use crate::actuation::config::ControllersConfig;
 use hap::Result;
 use tokio::fs;
 

@@ -1,5 +1,7 @@
 use std::collections::HashMap;
 
+pub mod imp;
+
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct ControllersConfig {
     /// The declaration of all blinds names and attributes to run on this Raspberry Pi

@@ -12,11 +12,10 @@ use hap::{
     storage::FileStorage,
     Result,
 };
-use crate::model::config::ControllersConfig;
-use crate::model::controller::Controllers;
+use crate::actuation::config::ControllersConfig;
+use crate::actuation::controller::Controllers;
 
-mod imp;
-mod model;
+mod actuation;
 mod proxy;
 
 #[tokio::main]
