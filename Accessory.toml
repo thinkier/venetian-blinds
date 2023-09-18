@@ -1,4 +1,5 @@
 [blinds.Left]
 channel = 0
-period_extend = 60000
-period_tilt = 2000
+rotations_to_fully_extend = 200
+rotations_to_fully_tilt = 5
+feedback_pin = 23

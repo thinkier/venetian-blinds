@@ -22,7 +22,7 @@ pub struct VenetianBlind {
     pub feedback_pin: u8,
     /// The duty cycle value of the feedback PWM signal when the servo is at 0 degrees
     #[serde(default = "default_feedback_duty_cycle_lower_bound")]
-    pub feedback_duty_cycle_lower_bound: f32
+    pub feedback_duty_cycle_lower_bound: f32,
     /// The duty cycle value of the feedback PWM signal when the servo is at 359.99 degrees
     #[serde(default = "default_feedback_duty_cycle_upper_bound")]
     pub feedback_duty_cycle_upper_bound: f32,

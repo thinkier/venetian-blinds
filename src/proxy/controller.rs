@@ -12,10 +12,10 @@ impl Controller {
         }
     }
 
-    pub fn update_pos_async(&'static self) -> impl OnUpdateFuture<i32> {
+    pub fn update_pos_async(&'static self) -> impl OnUpdateFuture<u8> {
         move |_cur, new| {
             async move {
-                self.set_position(new as u8).await;
+                self.set_position(new).await;
                 Ok(())
             }.boxed()
         }

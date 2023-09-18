@@ -2,10 +2,8 @@ use std::sync::{Arc};
 use hap::accessory::{AccessoryInformation, HapAccessory};
 use hap::accessory::window_covering::WindowCoveringAccessory;
 use hap::characteristic::{AsyncCharacteristicCallbacks, CharacteristicCallbacks};
-use hap::characteristic::position_state::PositionStateCharacteristic;
 use hap::futures::FutureExt;
 use hap::service::window_covering::WindowCoveringService;
-use parking_lot::RwLock;
 use crate::model::controller::Controller;
 
 pub fn get(ctr: Controller, name: &str, index: usize) -> impl HapAccessory {
@@ -33,9 +31,9 @@ fn initialize_characteristics(window_covering: &mut WindowCoveringService, ctr: 
     }
 
     if let Some(cvta) = &mut window_covering.current_vertical_tilt_angle {
-        cvta.on_read(Some(move || {
-            Ok(Some(ctr.get_tilt() as i32 * 90 / 128))
-        }));
+        cvta.on_read_async(Some(move || async {
+            Ok(Some(ctr.get_tilt().await as i32 * 90 / 128))
+        }.boxed()));
     }
 
     {
@@ -45,16 +43,16 @@ fn initialize_characteristics(window_covering: &mut WindowCoveringService, ctr: 
 
     {
         let cp = &mut window_covering.current_position;
-        cp.on_read(Some(|| {
-            Ok(Some(ctr.get_position() as i32 * 100 / 255))
-        }));
+        cp.on_read_async(Some(move || async {
+            Ok(Some(ctr.get_position().await))
+        }.boxed()));
     }
 
     {
         let ps = &mut window_covering.position_state;
-        let ctr = ctr.clone();
-        ps.on_read(Some(|| {
-            Ok(Some(if ctr.active.try_lock().is_ok() {
+        let activity = Arc::clone(&ctr.activity);
+        ps.on_read(Some(move || {
+            Ok(Some(if activity.available_permits() == 0 {
                 // 1 // Increasing
                 0 // Decreasing
             } else {
