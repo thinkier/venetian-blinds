@@ -112,9 +112,10 @@ impl Controller {
         info!("Attempting to move exactly {} turns.", amount);
 
         #[cfg(feature = "raspi_pwm")]
-        self.start_moving(true).await;
+        self.start_moving(amount.is_sign_positive()).await;
 
-        tokio::time::sleep(Duration::from_secs_f32(amount)).await;
+        // TODO: Substitute for accurate rotation measurement from the PWM feedback
+        tokio::time::sleep(Duration::from_secs_f32(amount.abs() / 4f32)).await;
 
         #[cfg(feature = "raspi_pwm")]
         self.stop_moving().await;
