@@ -4,8 +4,9 @@ use crate::actuation::controller::Controller;
 
 impl Controller {
     pub fn update_tilt_async(&'static self) -> impl OnUpdateFuture<i32> {
-        move |_cur, new| {
+        move |cur, new| {
             async move {
+                info!("Setting tilt from {} to {}", cur, new);
                 self.set_tilt(new as i8).await;
                 Ok(())
             }.boxed()
@@ -13,8 +14,9 @@ impl Controller {
     }
 
     pub fn update_pos_async(&'static self) -> impl OnUpdateFuture<u8> {
-        move |_cur, new| {
+        move |cur, new| {
             async move {
+                info!("Setting position from {} to {}", cur, new);
                 self.set_position(new).await;
                 Ok(())
             }.boxed()

@@ -1,18 +1,13 @@
 use std::error::Error;
-use parking_lot::RwLock as SyncRwLock;
-use std::f32::consts::PI;
 use std::mem;
 use std::sync::Arc;
-use std::time::{Duration, Instant};
+use std::time::{Duration};
 use crate::actuation::config::{ControllersConfig, VenetianBlind};
 use crate::actuation::controller::{Controller, Controllers, InnerController};
 use hap::Result as HapResult;
 use tokio::sync::{RwLock, Semaphore};
 #[cfg(feature = "raspi_pwm")]
-use rppal::gpio::{InputPin, Gpio, Trigger, Level};
-#[cfg(feature = "raspi_pwm")]
 use rppal::pwm::{Channel, Polarity, Pwm};
-use tokio::task::JoinError;
 
 impl Controllers {
     pub fn from_config(config: ControllersConfig) -> HapResult<Controllers> {
@@ -36,7 +31,13 @@ impl Controller {
         };
 
         info!("Initializing PWM on channel {}", config.channel);
-        let pwm = Pwm::with_period(channel, Duration::from_millis(20), Duration::from_micros(1500), Polarity::Normal, true).unwrap();
+        let pwm = Pwm::with_period(
+            channel,
+            Duration::from_millis(20),
+            Duration::from_micros(1500),
+            Polarity::Normal,
+            false,
+        ).unwrap();
 
         Ok(Controller {
             activity: Arc::new(Semaphore::new(1)),
@@ -58,7 +59,7 @@ impl Controller {
                 tilt: -90f32,
                 position: 0f32,
                 config,
-            }))
+            })),
         })
     }
 
@@ -74,10 +75,13 @@ impl Controller {
     }
 
     pub async fn set_tilt(&self, tilt: i8) {
-        let mut inner = self.inner.write().await;
+        let (want, have) = {
+            let mut inner = self.inner.write().await;
 
-        let want = map_i8_to_f32(tilt, -90, 90, 0f32, inner.config.rotations_to_fully_tilt);
-        let have = mem::replace(&mut inner.tilt, want);
+            let want = map_i8_to_f32(tilt, -90, 90, 0f32, inner.config.rotations_to_fully_tilt);
+            let have = mem::replace(&mut inner.tilt, want);
+            (want, have)
+        };
 
         self.move_exact(want - have).await;
     }
@@ -93,30 +97,47 @@ impl Controller {
             self.set_tilt(-90).await;
         }
 
-        let mut inner = self.inner.write().await;
+        let (want, have) = {
+            let mut inner = self.inner.write().await;
 
-        let want = map_u8_to_f32(pos, 0, 100, 0f32, inner.config.rotations_to_fully_extend);
-        let have = mem::replace(&mut inner.position, want);
+            let want = map_u8_to_f32(pos, 0, 100, 0f32, inner.config.rotations_to_fully_extend);
+            let have = mem::replace(&mut inner.position, want);
+            (want, have)
+        };
 
         self.move_exact(want - have).await;
     }
 
-    pub async fn move_exact(&self, amount: f32) {}
+    pub async fn move_exact(&self, amount: f32) {
+        info!("Attempting to move exactly {} turns.", amount);
 
-    pub async fn start_moving(&self, forward: bool) {
         #[cfg(feature = "raspi_pwm")]
-        self.inner.read().await.pwm.set_pulse_width(Duration::from_micros(
+        self.start_moving(true).await;
+
+        tokio::time::sleep(Duration::from_secs_f32(amount)).await;
+
+        #[cfg(feature = "raspi_pwm")]
+        self.stop_moving().await;
+
+        info!("Move finished");
+    }
+
+    #[cfg(feature = "raspi_pwm")]
+    pub async fn start_moving(&self, forward: bool) {
+        let pwm = &self.inner.read().await.pwm;
+        pwm.set_pulse_width(Duration::from_micros(
             if forward {
                 1700
             } else {
                 1300
             }
         )).unwrap();
+        pwm.enable().unwrap()
     }
 
+    #[cfg(feature = "raspi_pwm")]
     pub async fn stop_moving(&self) {
-        #[cfg(feature = "raspi_pwm")]
-        self.inner.read().await.pwm.set_pulse_width(Duration::from_micros(1500)).unwrap();
+        self.inner.read().await.pwm.disable().unwrap();
     }
 }
 
@@ -151,7 +172,7 @@ fn map_i8_to_f32(val: i8, ilow: i8, ihigh: i8, olow: f32, ohigh: f32) -> f32 {
     (val - ilow) * (ohigh - olow) / (ihigh - ilow) + olow
 }
 
-fn map_u8_to_f32(mut val: u8, ilow: u8, ihigh: u8, olow: f32, ohigh: f32) -> f32 {
+fn map_u8_to_f32(val: u8, ilow: u8, ihigh: u8, olow: f32, ohigh: f32) -> f32 {
     let mut val = val as f32;
     let ilow = ilow as f32;
     let ihigh = ihigh as f32;

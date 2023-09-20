@@ -1,6 +1,6 @@
-use std::sync::Arc;
+use std::sync::{Arc};
+use parking_lot::RwLock;
 use rppal::gpio::InputPin;
-use tokio::sync::RwLock;
 
 pub mod imp;
 

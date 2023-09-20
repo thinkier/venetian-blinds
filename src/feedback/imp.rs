@@ -1,25 +1,25 @@
+use std::error::Error;
 use std::f32::consts::PI;
 use std::mem;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use parking_lot::RwLock as SyncRwLock;
 use rppal::gpio::{Gpio, InputPin, Level, Trigger};
-use tokio::sync::RwLock;
 use crate::feedback::{Rotation, ServoPwmFeedback, ServoPwmFeedbackConfig};
 
 impl ServoPwmFeedback {
-    pub fn init(pin: u8, freq: u16, lower_bound: f32, upper_bound: f32) -> ServoPwmFeedback {
+    pub fn init(pin: u8, freq: u16, lower_bound: f32, upper_bound: f32) -> Result<ServoPwmFeedback, Box<dyn Error>> {
         let mut in_pin: InputPin = Gpio::new()?.get(pin)?.into_input();
 
-        ServoPwmFeedback {
+        Ok(ServoPwmFeedback {
             in_pin,
-            rotation: Arc::new(RwLock::new(Rotation::Stopped)),
+            rotation: Arc::new(SyncRwLock::new(Rotation::Stopped)),
             config: ServoPwmFeedbackConfig {
                 freq,
                 lower_bound,
                 upper_bound,
             },
-        }
+        })
     }
 
     pub async fn enable_feedback(&mut self) {
