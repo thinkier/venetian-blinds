@@ -1,5 +1,5 @@
 [blinds.Left]
 channel = 0
-rotations_to_fully_extend = 200
-rotations_to_fully_tilt = 5
+rotations_to_fully_extend = 70
+rotations_to_fully_tilt = 2
 feedback_pin = 23

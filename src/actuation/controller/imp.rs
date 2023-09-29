@@ -75,6 +75,12 @@ impl Controller {
     }
 
     pub async fn set_tilt(&self, tilt: i8) {
+        let _ = self.activity.acquire().await.unwrap();
+
+        self.set_tilt_nonacquiring(tilt).await;
+    }
+
+    async fn set_tilt_nonacquiring(&self, tilt: i8) {
         let (want, have) = {
             let mut inner = self.inner.write().await;
 
@@ -92,6 +98,8 @@ impl Controller {
     }
 
     pub async fn set_position(&self, pos: u8) {
+        let _ = self.activity.acquire().await.unwrap();
+
         let orig_tilt = self.get_tilt().await;
         if orig_tilt > -90 {
             self.set_tilt(-90).await;
@@ -106,6 +114,7 @@ impl Controller {
         };
 
         self.move_exact(want - have).await;
+        self.set_tilt_nonacquiring(orig_tilt).await;
     }
 
     pub async fn move_exact(&self, amount: f32) {
@@ -114,8 +123,8 @@ impl Controller {
         #[cfg(feature = "raspi_pwm")]
         self.start_moving(amount.is_sign_positive()).await;
 
-        // TODO: Substitute for accurate rotation measurement from the PWM feedback
-        tokio::time::sleep(Duration::from_secs_f32(amount.abs() / 4f32)).await;
+        // WONTFIX: Substitute for accurate rotation measurement from the PWM feedback
+        tokio::time::sleep(Duration::from_secs_f32(amount.abs())).await;
 
         #[cfg(feature = "raspi_pwm")]
         self.stop_moving().await;

@@ -19,7 +19,7 @@ pub struct VenetianBlind {
     pub rotations_to_fully_tilt: f32,
     /// Frequency of the feedback PWM signal
     #[serde(default = "default_feedback_freq")]
-    pub feedback_freq: u32,
+    pub feedback_freq: u16,
     /// The GPIO pin to use for the feedback PWM signal for this blind's servo
     pub feedback_pin: u8,
     /// The duty cycle value of the feedback PWM signal when the servo is at 0 degrees
@@ -32,7 +32,7 @@ pub struct VenetianBlind {
 
 // Default values in datasheet: https://www.digikey.com.au/en/htmldatasheets/production/2483575/0/0/1/900-00360
 
-fn default_feedback_freq() -> u32 {
+fn default_feedback_freq() -> u16 {
     910
 }
 

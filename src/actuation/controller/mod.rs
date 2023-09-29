@@ -21,6 +21,8 @@ pub struct Controller {
 pub struct InnerController {
     #[cfg(feature = "raspi_pwm")]
     pwm: Pwm,
+    // #[cfg(feature = "raspi_pwm")]
+    // feedback: crate::feedback::ServoPwmFeedback,
     tilt: f32,
     position: f32,
     pub config: VenetianBlind,
