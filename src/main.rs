@@ -16,7 +16,7 @@ use crate::actuation::config::ControllersConfig;
 use crate::actuation::controller::Controllers;
 
 mod actuation;
-#[cfg(feature = "raspi_pwm")]
+#[cfg(all(feature = "raspi_pwm", feature = "feedback"))]
 mod feedback;
 mod proxy;
 
