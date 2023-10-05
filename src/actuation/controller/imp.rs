@@ -137,9 +137,9 @@ impl Controller {
         let pwm = &self.inner.read().await.pwm;
         pwm.set_pulse_width(Duration::from_micros(
             if forward {
-                1700
+                2400
             } else {
-                1300
+                600
             }
         )).unwrap();
         pwm.enable().unwrap()
