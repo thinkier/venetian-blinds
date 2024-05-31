@@ -7,7 +7,7 @@ mod conf;
 
 use tokio;
 use hap::Result;
-use crate::conf::Conf;
+use crate::conf::BridgeConf;
 
 fn check_env() {
     if std::env::var("RUST_LOG").is_err() {
@@ -21,7 +21,7 @@ fn check_env() {
 async fn main() -> Result<()> {
     check_env();
     env_logger::init();
-    let conf = Conf::read();
+    let conf = BridgeConf::read();
 
     debug!("Read configuration {:?}", conf);
 
