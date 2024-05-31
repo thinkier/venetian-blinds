@@ -1,0 +1,8 @@
+[blinds.Left.pwm]
+channel = 0
+
+[blinds.Left.servo]
+phase_width_delta = 400
+phase_width_center = 1500
+full_tilt_time = 5
+full_cycle_time = 135

@@ -8,16 +8,16 @@ edition = "2021"
 [dependencies]
 hap = "^0.1.0-pre.15"
 tokio = { version = "^1", features = ["full"] }
-parking_lot = "^0.12.1"
-log = "^0.4.14"
-env_logger = "^0.10.0"
-toml = "^0.7"
+log = "^0.4"
+env_logger = "^0.11"
+toml = "^0.8"
 serde = "^1"
 serde_derive = "^1"
-gethostname = "^0.4.3"
-rppal = { version = "^0.14.1", optional = true }
+btleplug = { version = "^0.11.5", optional = true }
+gethostname = {version = "^0.4.3", optional = true }
+rppal = { version = "^0.18", optional = true }
 
 [features]
 default = []
-raspi_pwm = ["rppal"]
-feedback = []
+hw_ble = ["btleplug"]
+hw_raspi = ["rppal", "gethostname"]
