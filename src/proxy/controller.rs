@@ -17,7 +17,9 @@ impl Controller {
         move |cur, new| {
             async move {
                 info!("Setting position from {} to {}", cur, new);
-                self.set_position(new).await;
+                let _ = tokio::spawn(async move {
+                    self.set_position(new).await;
+                });
                 Ok(())
             }.boxed()
         }

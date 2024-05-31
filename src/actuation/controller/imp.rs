@@ -68,7 +68,7 @@ impl Controller {
         let (range, value) = {
             let inner = self.inner.read().await;
 
-            (inner.config.rotations_to_fully_tilt, inner.tilt)
+            (inner.config.tilt_time, inner.tilt)
         };
 
         return map_f32_to_i8(value, 0f32, range, -90, 90);
@@ -84,7 +84,7 @@ impl Controller {
         let (want, have) = {
             let mut inner = self.inner.write().await;
 
-            let want = map_i8_to_f32(tilt, -90, 90, 0f32, inner.config.rotations_to_fully_tilt);
+            let want = map_i8_to_f32(tilt, -90, 90, 0f32, inner.config.tilt_time);
             let have = mem::replace(&mut inner.tilt, want);
             (want, have)
         };
@@ -93,28 +93,36 @@ impl Controller {
     }
 
     pub async fn get_position(&self) -> u8 {
-        let inner = self.inner.read().await;
-        map_f32_to_u8(inner.position, 0f32, inner.config.rotations_to_fully_extend, 0, 100)
+        self.inner.read().await.position.round() as u8
     }
 
     pub async fn set_position(&self, pos: u8) {
         let _ = self.activity.acquire().await.unwrap();
 
-        let orig_tilt = self.get_tilt().await;
-        if orig_tilt > -90 {
-            self.set_tilt(-90).await;
-        }
-
-        let (want, have) = {
+        let delta = {
             let mut inner = self.inner.write().await;
 
-            let want = map_u8_to_f32(pos, 0, 100, 0f32, inner.config.rotations_to_fully_extend);
-            let have = mem::replace(&mut inner.position, want);
-            (want, have)
+            let mut want = pos as f32;
+            let mut have = mem::replace(&mut inner.position, want);
+            let mut delta = want - have;
+
+            if want < have {
+                delta *= inner.config.retract.time;
+            } else {
+                delta *= inner.config.extend.time;
+            }
+
+            delta
         };
 
-        self.move_exact(want - have).await;
-        self.set_tilt_nonacquiring(orig_tilt).await;
+        let orig_tilt = self.get_tilt().await;
+        if delta.is_sign_negative() && orig_tilt > -90 {
+            self.set_tilt_nonacquiring(-90).await;
+        } else if delta.is_sign_positive() && orig_tilt < 90 {
+            self.set_tilt_nonacquiring(90).await;
+        }
+
+        self.move_exact(delta).await;
     }
 
     pub async fn move_exact(&self, amount: f32) {
@@ -137,7 +145,7 @@ impl Controller {
         let pwm = &self.inner.read().await.pwm;
         pwm.set_pulse_width(Duration::from_micros(
             if forward {
-                2400
+                1950
             } else {
                 600
             }

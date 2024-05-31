@@ -1,5 +1,11 @@
 [blinds.Left]
 channel = 0
-rotations_to_fully_extend = 70
-rotations_to_fully_tilt = 2
-feedback_pin = 23
+tilt_time = 5
+
+[blinds.Left.extend]
+phase_width = 1950
+time = 135
+
+[blinds.Left.retract]
+phase_width = 600
+time = 135
