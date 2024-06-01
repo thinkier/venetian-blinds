@@ -1,15 +1,15 @@
-use std::collections::HashMap;
-
 #[derive(Debug, Deserialize)]
 pub struct BridgeConf {
     /// Set of name-value configurations for a collection of window dressings controlled by this bridge
-    pub blinds: HashMap<String, BlindConf>,
+    pub blinds: Vec<BlindConf>,
 }
 
 /// Configuration for an individual window dressing
 #[derive(Clone, Debug, Deserialize, PartialEq)]
 #[serde(deny_unknown_fields)]
 pub struct BlindConf {
+    /// Name of this window dressing
+    pub name: String,
     /// Wrapper over physical motor configuration e.g. stepper vs servomotor
     #[serde(flatten)]
     pub motor: MotorConf,
@@ -52,10 +52,7 @@ pub enum HwMode {
     },
     /// Use a mock testing adaptor to analyse the window dressing's behaviour
     #[cfg(test)]
-    Mock {
-        /// The name to log into console with
-        name: String
-    },
+    Mock,
     /// Use a locally-connected PWM channel to handle this window dressing
     #[cfg(feature = "hw_raspi")]
     Pwm {

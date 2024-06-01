@@ -1,14 +1,14 @@
-[blinds.DebugRoller.mock]
+[[blinds]]
 name = "DebugRoller"
-
-[blinds.DebugRoller.servo]
+[blinds.mock]
+[blinds.servo]
 pulse_width_delta = 400
 full_cycle_time = 100
 
-[blinds.DebugVenetian.mock]
+[[blinds]]
 name = "DebugVenetian"
-
-[blinds.DebugVenetian.servo]
+[blinds.mock]
+[blinds.servo]
 pulse_width_delta = 400
 full_tilt_time = 1
 full_cycle_time = 100
