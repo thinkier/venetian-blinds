@@ -3,11 +3,13 @@ extern crate log;
 #[macro_use]
 extern crate serde_derive;
 
-mod conf;
+ mod actuation;
+mod model;
+ mod utils;
 
 use tokio;
 use hap::Result;
-use crate::conf::BridgeConf;
+use crate::model::conf::BridgeConf;
 
 fn check_env() {
     if std::env::var("RUST_LOG").is_err() {
