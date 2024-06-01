@@ -2,13 +2,13 @@
 name = "DebugRoller"
 
 [blinds.DebugRoller.servo]
-phase_width_delta = 400
+pulse_width_delta = 400
 full_cycle_time = 100
 
 [blinds.DebugVenetian.mock]
 name = "DebugVenetian"
 
 [blinds.DebugVenetian.servo]
-phase_width_delta = 400
+pulse_width_delta = 400
 full_tilt_time = 1
 full_cycle_time = 100
