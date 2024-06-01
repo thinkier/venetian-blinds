@@ -30,9 +30,9 @@ pub enum MotorConf {
         #[serde(default = "default_servo_pulse_width")]
         pulse_width_center: i16,
         /// Time to go from 0 to 100% opened
-        full_cycle_time: u16,
+        full_cycle_time: f32,
         /// Time to go from -90 to 90 degrees tilt, if [`None`], the tilt feature is disabled
-        full_tilt_time: Option<u16>,
+        full_tilt_time: Option<f32>,
     }
 }
 
@@ -47,8 +47,8 @@ pub enum HwMode {
     /// Use an external Bluetooth peripheral to handle this window dressing
     #[cfg(feature = "hw_ble")]
     Ble {
-        /// The Bluetooth peripheral name to select
-        name: String
+        /// The Bluetooth peripheral name to select. If omitted, the name of the window dressing will be used
+        name: Option<String>
     },
     /// Use a mock testing adaptor to analyse the window dressing's behaviour
     #[cfg(test)]

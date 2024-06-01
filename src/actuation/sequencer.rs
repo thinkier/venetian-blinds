@@ -55,7 +55,7 @@ impl WindowDressingSequencer {
 
                 self.instructions.push_back(WindowDressingServoInstruction {
                     pulse_width,
-                    duration: Duration::from_secs(*full_cycle_time as u64) / 100,
+                    duration: Duration::from_millis((full_cycle_time * 1e3) as u64) / 100,
                     completed_state: WindowDressingState {
                         position: self.current_state.position + percentage_change as u8,
                         tilt: self.current_state.tilt,

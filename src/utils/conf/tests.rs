@@ -10,7 +10,7 @@ fn test_deserialize_debug_cfg() {
         motor: MotorConf::Servo {
             pulse_width_delta: 400,
             pulse_width_center: 1500,
-            full_cycle_time: 100,
+            full_cycle_time: 100f32,
             full_tilt_time: None,
         },
         hw_mode: HwMode::Mock,
@@ -21,8 +21,8 @@ fn test_deserialize_debug_cfg() {
         motor: MotorConf::Servo {
             pulse_width_delta: 400,
             pulse_width_center: 1500,
-            full_cycle_time: 100,
-            full_tilt_time: Some(1),
+            full_cycle_time: 100f32,
+            full_tilt_time: Some(1f32),
         },
         hw_mode: HwMode::Mock,
     });
