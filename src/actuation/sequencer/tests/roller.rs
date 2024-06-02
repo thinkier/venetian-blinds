@@ -4,12 +4,7 @@ use crate::model::conf::{MotorConf};
 use crate::model::sequencer::{WindowDressingSequencer, WindowDressingServoInstruction, WindowDressingState};
 
 fn conf() -> MotorConf {
-    MotorConf::Servo {
-        pulse_width_delta: 400,
-        pulse_width_center: 1500,
-        full_cycle_time: 100f32,
-        full_tilt_time: None,
-    }
+    MotorConf::default()
 }
 
 #[test]

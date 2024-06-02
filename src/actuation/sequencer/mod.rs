@@ -20,8 +20,10 @@ impl WindowDressingSequencer {
 
     /// Retrieve the next instruction to send to the hardware, if present.
     pub fn get_next_instruction(&mut self) -> Option<WindowDressingServoInstruction> {
-        if let Some(next) = self.instructions.pop_front() {
+        if let Some(mut next) = self.instructions.pop_front() {
             self.current_state = next.completed_state;
+            // Round the duration to the nearest microsecond to avoid floating point errors during testing
+            next.duration = Duration::from_micros((next.duration.as_secs_f32() * 1e6).round() as u64);
 
             match &self.motor_conf {
                 MotorConf::Servo { pulse_width_center, .. } =>
@@ -68,17 +70,20 @@ impl WindowDressingSequencer {
                     relative_change *= -1;
                 }
 
+                let position = (self.current_state.position as i8 + relative_change) as u8;
                 self.instructions.push_back(WindowDressingServoInstruction {
                     pulse_width,
-                    duration: Duration::from_millis((full_cycle_time * 1e3) as u64) / 100,
+                    duration: Duration::from_nanos((full_cycle_time * 1e9) as u64) / 100,
                     completed_state: WindowDressingState {
-                        position: (self.current_state.position as i8 + relative_change) as u8,
-                        tilt: angle_while_moving,
+                        position,
+                        tilt: if position == 100 { 0 } else { angle_while_moving },
                     },
                 });
             }
         }
-        self.add_tilt(angle_while_moving, self.current_state.tilt);
+        if opened < 100 {
+            self.add_tilt(angle_while_moving, self.current_state.tilt);
+        }
     }
 
     /// Command from HAP to set the tilt of the window dressing.
@@ -100,19 +105,19 @@ impl WindowDressingSequencer {
         } = &self.motor_conf;
         if let Some(full_tilt_time) = full_tilt_time {
             self.desired_state.tilt = to_angle;
-            let forward = to_angle > from_angle;
-            let absolute_change = (to_angle as i8 - from_angle as i8).abs();
+            let opening = to_angle < from_angle;
+            let absolute_change = (to_angle as i16 - from_angle as i16).abs();
             if absolute_change == 0 { return; }
 
             for angle_change in 1..=absolute_change {
-                let tilt = if forward {
-                    from_angle + angle_change
+                let tilt = if opening {
+                    from_angle as i16 - angle_change
                 } else {
-                    from_angle - angle_change
-                };
+                    from_angle as i16 + angle_change
+                } as i8;
 
                 self.instructions.push_back(WindowDressingServoInstruction {
-                    pulse_width: pulse_width_center + if forward { *pulse_width_delta } else { -pulse_width_delta },
+                    pulse_width: pulse_width_center + if opening { *pulse_width_delta } else { -pulse_width_delta },
                     duration: Duration::from_nanos((full_tilt_time * 1e9) as u64) / 180,
                     completed_state: WindowDressingState {
                         position: self.get_tail_state().position,
@@ -127,7 +132,11 @@ impl WindowDressingSequencer {
     pub fn trig_endstop(&mut self) {
         self.instructions.clear();
 
-        let opening = self.current_state.position < self.desired_state.position || self.current_state.position == 100;
+        let opening = if self.current_state.position == self.desired_state.position {
+            self.current_state.tilt > self.desired_state.tilt
+        } else {
+            self.current_state.position < self.desired_state.position || self.current_state.position == 100
+        };
         let tilt = if let MotorConf::Servo { full_tilt_time: Some(_), .. } = &self.motor_conf {
             if opening { 0 } else { 90 }
         } else { 0 };
