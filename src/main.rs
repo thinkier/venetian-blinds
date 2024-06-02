@@ -1,11 +1,13 @@
+#![feature(async_closure)]
 #[macro_use]
 extern crate log;
 #[macro_use]
 extern crate serde_derive;
 
- mod actuation;
+mod actuation;
+mod gateway;
 mod model;
- mod utils;
+mod utils;
 
 use tokio;
 use hap::Result;

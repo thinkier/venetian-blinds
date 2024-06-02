@@ -2,6 +2,9 @@
 pub struct BridgeConf {
     /// Set of name-value configurations for a collection of window dressings controlled by this bridge
     pub blinds: Vec<BlindConf>,
+    /// The HomeKit pairing pin for the bridge
+    #[serde(rename = "pin")]
+    pub pairing_pin: String,
 }
 
 /// Configuration for an individual window dressing
@@ -20,7 +23,7 @@ pub struct BlindConf {
 
 /// Defines the variant of open-loop or closed-loop motor used for actuating the blinds,
 /// as well as its configuration
-#[derive(Clone, Debug, Deserialize, PartialEq)]
+#[derive(Clone, Copy, Debug, Deserialize, PartialEq)]
 #[serde(rename_all = "lowercase")]
 pub enum MotorConf {
     Servo {
