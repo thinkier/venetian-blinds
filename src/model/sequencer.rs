@@ -9,15 +9,17 @@ pub struct WindowDressingServoInstruction {
     pub completed_state: WindowDressingState,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Deserialize, PartialEq, Serialize)]
 pub struct WindowDressingSequencer {
+    #[serde(skip)]
     pub motor_conf: MotorConf,
     pub desired_state: WindowDressingState,
     pub current_state: WindowDressingState,
+    #[serde(skip)]
     pub instructions: VecDeque<WindowDressingServoInstruction>,
 }
 
-#[derive(Clone, Copy, Debug, Default, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, Deserialize, PartialEq, Serialize)]
 pub struct WindowDressingState {
     pub position: u8,
     pub tilt: i8,

@@ -83,15 +83,42 @@ impl WindowDressingSequencer {
 
     /// Command from HAP to set the tilt of the window dressing.
     pub fn set_tilt(&mut self, angle: i8) {
-        self.add_tilt(self.current_state.tilt, angle);
+        self.add_tilt(self.get_tail_state().tilt, angle);
     }
 
+    /// Get the desired state of the window dressing, as defined by the last command.
+    fn get_tail_state(&self) -> WindowDressingState {
+        self.instructions.back()
+            .map_or(self.current_state, |i| i.completed_state)
+    }
+
+    /// Schedules the command necessary to tilt the window dressing.
     fn add_tilt(&mut self, from_angle: i8, to_angle: i8) {
-        let MotorConf::Servo { full_tilt_time, .. } = &self.motor_conf;
-        {
-            if let Some(full_tilt_time) = full_tilt_time {
-                self.desired_state.tilt = to_angle;
-                unimplemented!()
+        let MotorConf::Servo {
+            pulse_width_center, pulse_width_delta,
+            full_tilt_time, ..
+        } = &self.motor_conf;
+        if let Some(full_tilt_time) = full_tilt_time {
+            self.desired_state.tilt = to_angle;
+            let forward = to_angle > from_angle;
+            let absolute_change = (to_angle as i8 - from_angle as i8).abs();
+            if absolute_change == 0 { return; }
+
+            for angle_change in 1..=absolute_change {
+                let tilt = if forward {
+                    from_angle + angle_change
+                } else {
+                    from_angle - angle_change
+                };
+
+                self.instructions.push_back(WindowDressingServoInstruction {
+                    pulse_width: pulse_width_center + if forward { *pulse_width_delta } else { -pulse_width_delta },
+                    duration: Duration::from_nanos((full_tilt_time * 1e9) as u64) / 180,
+                    completed_state: WindowDressingState {
+                        position: self.get_tail_state().position,
+                        tilt,
+                    },
+                });
             }
         }
     }

@@ -1,4 +1,4 @@
-use crate::model::conf::BridgeConf;
+use crate::model::conf::{BridgeConf, MotorConf};
 #[cfg(any(feature = "hw_ble"))]
 use crate::model::conf::HwMode;
 
@@ -39,6 +39,17 @@ impl BridgeConf {
         #[cfg(not(any(feature = "hw_ble")))]
         {
             toml::from_str(&conf_str).unwrap()
+        }
+    }
+}
+
+impl Default for MotorConf {
+    fn default() -> Self {
+        MotorConf::Servo {
+            pulse_width_delta: 400,
+            pulse_width_center: 1500,
+            full_cycle_time: 100f32,
+            full_tilt_time: None,
         }
     }
 }
