@@ -1,0 +1,16 @@
+[[blinds]]
+name = "PwmRoller"
+[blinds.pwm]
+channel = 0
+[blinds.servo]
+pulse_width_delta = 400
+full_cycle_time = 100
+
+[[blinds]]
+name = "PwmVenetian"
+[blinds.pwm]
+channel = 1
+[blinds.servo]
+pulse_width_delta = 400
+full_tilt_time = 1
+full_cycle_time = 100

@@ -47,14 +47,15 @@ pub enum HwMode {
     /// Use an external Bluetooth peripheral to handle this window dressing
     #[cfg(feature = "hw_ble")]
     Ble {
-        /// The Bluetooth peripheral name to select. If omitted, the name of the window dressing will be used
-        name: Option<String>
+        /// The Bluetooth peripheral name to select. If omitted or blank, the name of the window dressing will be used
+        #[serde(default)]
+        name: String
     },
     /// Use a mock testing adaptor to analyse the window dressing's behaviour
     #[cfg(test)]
     Mock,
     /// Use a locally-connected PWM channel to handle this window dressing
-    #[cfg(feature = "hw_raspi")]
+    #[cfg(feature = "hw_pwm")]
     Pwm {
         /// The PWM channel to select locally (on the Raspberry Pi)
         channel: u8

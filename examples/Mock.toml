@@ -1,0 +1,14 @@
+[[blinds]]
+name = "MockRoller"
+[blinds.mock]
+[blinds.servo]
+pulse_width_delta = 400
+full_cycle_time = 100
+
+[[blinds]]
+name = "MockVenetian"
+[blinds.mock]
+[blinds.servo]
+pulse_width_delta = 400
+full_tilt_time = 1
+full_cycle_time = 100

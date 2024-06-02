@@ -1,0 +1,15 @@
+[[blinds]]
+name = "BleRoller"
+[blinds.ble]
+[blinds.servo]
+pulse_width_delta = 400
+full_cycle_time = 100
+
+[[blinds]]
+name = "BleVenetian"
+[blinds.ble]
+name = "BleVenetian DEAD BEEF"
+[blinds.servo]
+pulse_width_delta = 400
+full_tilt_time = 1
+full_cycle_time = 100
