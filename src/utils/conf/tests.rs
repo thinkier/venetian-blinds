@@ -1,7 +1,7 @@
 use crate::model::conf::{BlindConf, BridgeConf, HwMode, MotorConf};
 
 #[test]
-fn test_deserialize_mock_cfg() {
+fn mock() {
     let mut conf = BridgeConf::read_with_name("examples/Mock.toml");
     assert_eq!(conf.blinds.len(), 2);
 
@@ -30,7 +30,7 @@ fn test_deserialize_mock_cfg() {
 
 #[cfg(feature = "hw_ble")]
 #[test]
-fn test_deserialize_ble_cfg() {
+fn ble() {
     let mut conf = BridgeConf::read_with_name("examples/Ble.toml");
     assert_eq!(conf.blinds.len(), 2);
 
@@ -63,7 +63,7 @@ fn test_deserialize_ble_cfg() {
 
 #[cfg(feature = "hw_pwm")]
 #[test]
-fn test_deserialize_pwm_cfg() {
+fn pwm() {
     let mut conf = BridgeConf::read_with_name("examples/Pwm.toml");
     assert_eq!(conf.blinds.len(), 2);
 

@@ -1,4 +1,6 @@
-use crate::model::conf::{BridgeConf, HwMode};
+use crate::model::conf::BridgeConf;
+#[cfg(any(feature = "hw_ble"))]
+use crate::model::conf::HwMode;
 
 #[cfg(test)]
 mod tests;
@@ -15,20 +17,28 @@ impl BridgeConf {
         Self::read_with_name(&conf_path)
     }
 
-    pub(crate) fn read_with_name(conf_path:&str) -> Self {
+    pub(crate) fn read_with_name(conf_path: &str) -> Self {
         let conf_str = std::fs::read_to_string(conf_path).unwrap();
 
-        let mut parsed: Self = toml::from_str(&conf_str).unwrap();
+        #[cfg(any(feature = "hw_ble"))]
+        {
+            let mut parsed: Self = toml::from_str(&conf_str).unwrap();
 
-        for blind in &mut parsed.blinds {
-            #[cfg(feature = "hw_ble")]
-            if let HwMode::Ble { name } = &mut blind.hw_mode {
-                if name.is_empty() {
-                    name.push_str(&blind.name);
+            for blind in &mut parsed.blinds {
+                #[cfg(feature = "hw_ble")]
+                if let HwMode::Ble { name } = &mut blind.hw_mode {
+                    if name.is_empty() {
+                        name.push_str(&blind.name);
+                    }
                 }
             }
+
+            parsed
         }
 
-        parsed
+        #[cfg(not(any(feature = "hw_ble")))]
+        {
+            toml::from_str(&conf_str).unwrap()
+        }
     }
 }
