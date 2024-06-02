@@ -3,3 +3,5 @@
 *.iml
 /data
 .DS_Store
+tarpaulin-report.html
+*.profraw

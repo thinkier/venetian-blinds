@@ -1,7 +1,7 @@
 use std::collections::VecDeque;
 use std::time::Duration;
 use crate::model::conf::MotorConf;
-use crate::model::state_machine::{WindowDressingServoInstruction, WindowDressingState, WindowDressingSequencer};
+use crate::model::sequencer::{WindowDressingServoInstruction, WindowDressingState, WindowDressingSequencer};
 
 #[cfg(test)]
 mod tests;

@@ -1,7 +1,7 @@
 use std::time::Duration;
 use crate::actuation::sequencer::HOLD_TIME;
 use crate::model::conf::{MotorConf};
-use crate::model::state_machine::{WindowDressingSequencer, WindowDressingServoInstruction, WindowDressingState};
+use crate::model::sequencer::{WindowDressingSequencer, WindowDressingServoInstruction, WindowDressingState};
 
 fn conf() -> MotorConf {
     MotorConf::Servo {
@@ -33,7 +33,7 @@ fn current_state_updates() {
 }
 
 #[test]
-fn fully_open() {
+fn open_fully() {
     let conf = conf();
     let mut seq = WindowDressingSequencer::from_conf(conf);
     seq.current_state.position = 0;
@@ -55,7 +55,7 @@ fn fully_open() {
 }
 
 #[test]
-fn partially_open() {
+fn open_partially() {
     let conf = conf();
     let mut seq = WindowDressingSequencer::from_conf(conf);
     seq.current_state.position = 25;
@@ -77,7 +77,7 @@ fn partially_open() {
 }
 
 #[test]
-fn fully_close() {
+fn close_fully() {
     let conf = conf();
     let mut seq = WindowDressingSequencer::from_conf(conf);
     seq.current_state.position = 100;
@@ -100,7 +100,7 @@ fn fully_close() {
 }
 
 #[test]
-fn partially_close() {
+fn close_partially() {
     let conf = conf();
     let mut seq = WindowDressingSequencer::from_conf(conf);
     seq.current_state.position = 75;

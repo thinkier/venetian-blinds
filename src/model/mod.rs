@@ -1,2 +1,2 @@
 pub mod conf;
-pub mod state_machine;
+pub mod sequencer;
