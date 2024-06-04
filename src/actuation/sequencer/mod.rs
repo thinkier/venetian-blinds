@@ -1,3 +1,4 @@
+use std::cmp::Ordering;
 use std::collections::VecDeque;
 use std::time::Duration;
 use crate::model::conf::MotorConf;
@@ -152,5 +153,23 @@ impl WindowDressingSequencer {
             duration: HOLD_TIME,
             completed_state: end_state,
         });
+    }
+}
+
+impl PartialOrd for WindowDressingState {
+    #[inline]
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for WindowDressingState {
+    #[inline]
+    fn cmp(&self, other: &Self) -> Ordering {
+        if self.position == other.position {
+            other.tilt.cmp(&&self.tilt)
+        } else {
+            self.position.cmp(&other.position)
+        }
     }
 }

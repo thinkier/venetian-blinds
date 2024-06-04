@@ -3,7 +3,6 @@ use hap::accessory::{AccessoryCategory, AccessoryInformation};
 use hap::{Config, MacAddress, Pin};
 use hap::accessory::window_covering::WindowCoveringAccessory;
 use hap::characteristic::{AsyncCharacteristicCallbacks};
-use hap::futures::future::BoxFuture;
 use hap::futures::FutureExt;
 use hap::Result;
 use hap::server::{IpServer, Server};
@@ -12,6 +11,32 @@ use tokio::sync::Mutex;
 use crate::model::conf::{BlindConf, BridgeConf, MotorConf};
 use crate::model::gateway::Bridge;
 use crate::model::sequencer::WindowDressingSequencer;
+
+macro_rules! chardef {
+    ($seq:ident, $ch:expr, $read_fn:expr $(,$($write_fn:expr)?)?) => {
+        if let Some(ch) = &mut $ch {
+            let seq = $seq.clone();
+            ch.on_read_async(Some(move || {
+                let seq = seq.clone();
+                async move {
+                    let mut seq = seq.lock().await;
+                    Ok(Some($read_fn(&mut seq)))
+                }.boxed()
+            }));
+
+            $($(
+                let seq = $seq.clone();
+                ch.on_update_async(Some(move |_old, new| {
+                    let seq = seq.clone();
+                    async move {
+                        let mut seq = seq.lock().await;
+                        Ok($write_fn(&mut seq, new))
+                    }.boxed()
+                }));
+            )?)?
+        }
+    }
+}
 
 impl From<BridgeConf> for Bridge {
     fn from(conf: BridgeConf) -> Self {
@@ -49,29 +74,35 @@ impl Bridge {
                     accessory.window_covering.current_vertical_tilt_angle = None;
                     accessory.window_covering.target_vertical_tilt_angle = None;
                 }
-                if let Some(c) = &mut accessory.window_covering.current_horizontal_tilt_angle {
-                    let seq = seq.clone();
-                    c.on_read_async(Some(move || {
-                        let seq = seq.clone();
-                        async move {
-                            let tilt = seq.lock().await.current_state.tilt as i32;
-                            Ok(Some(tilt))
-                        }.boxed()
-                    }));
-                    // TODO write
-                }
-                if let Some(c) = &mut accessory.window_covering.target_horizontal_tilt_angle {
-                    let seq = seq.clone();
-                    c.on_read_async(Some(move || {
-                        let seq = seq.clone();
-                        async move {
-                            let tilt = seq.lock().await.desired_state.tilt as i32;
-                            Ok(Some(tilt))
-                        }.boxed()
-                    }));
-                    // TODO write
-                }
-                todo!()
+                chardef!(seq, Some(&mut accessory.window_covering.current_position),
+                    |seq: &mut WindowDressingSequencer| { seq.current_state.position },
+                    |seq: &mut WindowDressingSequencer, new| { seq.set_position(new) }
+                );
+
+                chardef!(seq, Some(&mut accessory.window_covering.position_state),
+                    |seq: &mut WindowDressingSequencer| {
+                        // https://developers.homebridge.io/#/characteristic/PositionState
+                        match seq.current_state.position.cmp(&seq.desired_state.position) {
+                            std::cmp::Ordering::Less => 0, // Decreasing
+                            std::cmp::Ordering::Greater => 1, // Increasing
+                            std::cmp::Ordering::Equal => 2, // Stopped
+                        }
+                    }
+                );
+
+                chardef!(seq, Some(&mut accessory.window_covering.target_position),
+                    |seq: &mut WindowDressingSequencer| { seq.desired_state.position },
+                    |seq: &mut WindowDressingSequencer, new| { seq.set_position(new) }
+                );
+
+                chardef!(seq, accessory.window_covering.current_horizontal_tilt_angle,
+                    |seq: &mut WindowDressingSequencer| { seq.current_state.tilt as i32 }
+                );
+
+                chardef!(seq, accessory.window_covering.target_horizontal_tilt_angle,
+                    |seq: &mut WindowDressingSequencer| { seq.desired_state.tilt  as i32},
+                    |seq: &mut WindowDressingSequencer, new| { seq.set_tilt(new as i8) }
+                );
             }
         }
     }
@@ -86,7 +117,7 @@ impl Bridge {
             }), blind)
         });
 
-        for (mut accessory, config) in accessories {
+        for (accessory, config) in accessories {
             let mut accessory = accessory?;
 
             self.configure_accessory(&mut accessory, config);

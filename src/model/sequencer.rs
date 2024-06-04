@@ -19,7 +19,7 @@ pub struct WindowDressingSequencer {
     pub instructions: VecDeque<WindowDressingServoInstruction>,
 }
 
-#[derive(Clone, Copy, Debug, Default, Deserialize, PartialEq, Serialize)]
+#[derive(Clone, Copy, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
 pub struct WindowDressingState {
     pub position: u8,
     pub tilt: i8,
