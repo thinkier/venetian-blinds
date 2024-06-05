@@ -54,8 +54,7 @@ pub enum HwMode {
         #[serde(default)]
         name: String
     },
-    /// Use a mock testing adaptor to analyse the window dressing's behaviour
-    #[cfg(test)]
+    /// Use a mock adaptor to analyse the window dressing's behaviour
     Mock,
     /// Use a locally-connected PWM channel to handle this window dressing
     #[cfg(feature = "hw_pwm")]
