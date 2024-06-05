@@ -8,8 +8,9 @@ use hap::Result;
 use hap::server::{IpServer, Server};
 use hap::storage::{FileStorage, Storage};
 use tokio::sync::Mutex;
-use crate::model::conf::{BlindConf, BridgeConf, MotorConf};
-use crate::model::gateway::Bridge;
+use crate::actuation::backend::mock::{mock_backend};
+use crate::model::conf::{BridgeConf, HwMode, MotorConf};
+use crate::model::gateway::{BlindInstance, Bridge};
 use crate::model::sequencer::WindowDressingSequencer;
 
 macro_rules! chardef {
@@ -38,15 +39,34 @@ macro_rules! chardef {
     }
 }
 
-impl From<BridgeConf> for Bridge {
-    fn from(conf: BridgeConf) -> Self {
-        Bridge {
-            conf
-        }
-    }
-}
+impl<'a> Bridge<'a> {
+    pub async fn new(bridge_conf: &'a BridgeConf) -> Self {
+        let mut bridge = Bridge {
+            conf: bridge_conf,
+            blinds: vec![],
+        };
 
-impl Bridge {
+        for conf in &bridge.conf.blinds {
+            let seq = Arc::new(Mutex::new(WindowDressingSequencer::from_conf(conf.motor)));
+
+            let backend = match &conf.backend {
+                HwMode::Mock => {
+                    mock_backend(conf.name.clone(), &seq).await
+                }
+                #[cfg(any(feature = "hw_ble", feature = "hw_pwm"))]
+                m => unimplemented!("{:?} is not implemented", m)
+            };
+
+            bridge.blinds.push(BlindInstance {
+                conf,
+                seq,
+                backend,
+            });
+        }
+
+        return bridge;
+    }
+
     fn parse_pin(&self) -> Result<Pin> {
         let mut pin = [0u8; 8];
 
@@ -60,16 +80,15 @@ impl Bridge {
         Pin::new(pin)
     }
 
-    fn configure_accessory(&self, accessory: &mut WindowCoveringAccessory, config: &BlindConf) {
+    fn configure_accessory(&self, accessory: &mut WindowCoveringAccessory, inst: &'a BlindInstance<'a>) {
         accessory.window_covering.current_vertical_tilt_angle = None;
         accessory.window_covering.target_vertical_tilt_angle = None;
         accessory.window_covering.obstruction_detected = None;
         accessory.window_covering.hold_position = None;
 
-        match config.motor {
+        match inst.conf.motor {
             MotorConf::Servo { full_tilt_time, .. } => {
-                let seq = Arc::new(Mutex::new(WindowDressingSequencer::from_conf(config.motor)));
-
+                let seq = inst.seq.clone();
                 if full_tilt_time.is_none() {
                     accessory.window_covering.current_vertical_tilt_angle = None;
                     accessory.window_covering.target_vertical_tilt_angle = None;
@@ -107,27 +126,27 @@ impl Bridge {
         }
     }
 
-    fn accessories(&self) -> Result<Vec<WindowCoveringAccessory>> {
+    fn accessories(&mut self) -> Result<Vec<WindowCoveringAccessory>> {
         let mut buf = vec![];
 
-        let accessories = self.conf.blinds.iter().enumerate().map(|(id, blind)| {
+        let accessories = self.blinds.iter().enumerate().map(|(id, inst)| {
             (WindowCoveringAccessory::new(id as u64 * 10, AccessoryInformation {
-                name: blind.name.clone(),
+                name: inst.conf.name.clone(),
                 ..Default::default()
-            }), blind)
+            }), inst)
         });
 
-        for (accessory, config) in accessories {
+        for (accessory, inst) in accessories {
             let mut accessory = accessory?;
 
-            self.configure_accessory(&mut accessory, config);
+            self.configure_accessory(&mut accessory, inst);
             buf.push(accessory);
         }
 
         Ok(buf)
     }
 
-    pub async fn start(&self) -> Result<()> {
+    pub async fn start(&mut self) -> Result<()> {
         let mut storage = FileStorage::current_dir().await?;
 
         let config = match storage.load_config().await {
@@ -157,5 +176,13 @@ impl Bridge {
         let handle = server.run_handle();
 
         handle.await
+    }
+}
+
+impl<'a> Drop for Bridge<'a> {
+    fn drop(&mut self) {
+        for inst in &self.blinds {
+            inst.backend.abort();
+        }
     }
 }

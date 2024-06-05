@@ -26,7 +26,7 @@ impl BridgeConf {
 
             for blind in &mut parsed.blinds {
                 #[cfg(feature = "hw_ble")]
-                if let HwMode::Ble { name } = &mut blind.hw_mode {
+                if let HwMode::Ble { name } = &mut blind.backend {
                     if name.is_empty() {
                         name.push_str(&blind.name);
                     }

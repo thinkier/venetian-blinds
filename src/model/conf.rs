@@ -18,7 +18,7 @@ pub struct BlindConf {
     pub motor: MotorConf,
     /// Wrapper over control protocol e.g. local PWM vs BLE
     #[serde(flatten)]
-    pub hw_mode: HwMode,
+    pub backend: HwMode,
 }
 
 /// Defines the variant of open-loop or closed-loop motor used for actuating the blinds,

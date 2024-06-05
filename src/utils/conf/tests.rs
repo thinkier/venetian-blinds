@@ -13,7 +13,7 @@ fn mock() {
             full_cycle_time: 100f32,
             full_tilt_time: None,
         },
-        hw_mode: HwMode::Mock,
+        backend: HwMode::Mock,
     });
 
     assert_eq!(conf.blinds.remove(0), BlindConf {
@@ -24,7 +24,7 @@ fn mock() {
             full_cycle_time: 100f32,
             full_tilt_time: Some(1f32),
         },
-        hw_mode: HwMode::Mock,
+        backend: HwMode::Mock,
     });
 }
 
@@ -42,7 +42,7 @@ fn ble() {
             full_cycle_time: 100f32,
             full_tilt_time: None,
         },
-        hw_mode: HwMode::Ble {
+        backend: HwMode::Ble {
             name: "BleRoller".to_string(),
         },
     });
@@ -55,7 +55,7 @@ fn ble() {
             full_cycle_time: 100f32,
             full_tilt_time: Some(1f32),
         },
-        hw_mode: HwMode::Ble {
+        backend: HwMode::Ble {
             name: "BleVenetian DEAD BEEF".to_string(),
         },
     });
@@ -75,7 +75,7 @@ fn pwm() {
             full_cycle_time: 100f32,
             full_tilt_time: None,
         },
-        hw_mode: HwMode::Pwm {
+        backend: HwMode::Pwm {
             channel: 0,
         },
     });
@@ -88,7 +88,7 @@ fn pwm() {
             full_cycle_time: 100f32,
             full_tilt_time: Some(1f32),
         },
-        hw_mode: HwMode::Pwm {
+        backend: HwMode::Pwm {
             channel: 1,
         },
     });

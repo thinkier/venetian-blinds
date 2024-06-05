@@ -12,6 +12,7 @@ mod utils;
 use tokio;
 use hap::Result;
 use crate::model::conf::BridgeConf;
+use crate::model::gateway::Bridge;
 
 fn check_env() {
     if std::env::var("RUST_LOG").is_err() {
@@ -27,7 +28,7 @@ async fn main() -> Result<()> {
     env_logger::init();
     let conf = BridgeConf::read();
 
-    debug!("Read configuration {:?}", conf);
+    let mut bridge = Bridge::new(&conf).await;
 
-    Ok(())
+    bridge.start().await
 }
