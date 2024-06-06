@@ -1,12 +1,10 @@
 pin = "69696969"
 
 [[blinds]]
-name = "Left"
+name = "Mock Blind"
 
-[blinds.pwm]
-channel = 0
-
+[blinds.mock]
 [blinds.servo]
 pulse_width_delta = 400
-full_tilt_time = 5
-full_cycle_time = 135
+full_tilt_time = 1.8
+full_cycle_time = 100
