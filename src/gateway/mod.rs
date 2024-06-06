@@ -130,7 +130,7 @@ impl<'a> Bridge<'a> {
         let mut buf = vec![];
 
         let accessories = self.blinds.iter().enumerate().map(|(id, inst)| {
-            (WindowCoveringAccessory::new(id as u64 * 10, AccessoryInformation {
+            (WindowCoveringAccessory::new((id as u64 * 10) + 1, AccessoryInformation {
                 name: inst.conf.name.clone(),
                 ..Default::default()
             }), inst)
