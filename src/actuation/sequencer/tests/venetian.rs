@@ -183,6 +183,7 @@ fn close_full_sequence() {
         }));
     }
 
+    // TODO Defective test: no tilt when position is 0
     for i in -89..=90 {
         assert_eq!(seq.get_next_instruction(), Some(WindowDressingServoInstruction {
             pulse_width: 1900,

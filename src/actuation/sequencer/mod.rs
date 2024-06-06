@@ -117,14 +117,27 @@ impl WindowDressingSequencer {
                     from_angle as i16 + angle_change
                 } as i8;
 
-                self.instructions.push_back(WindowDressingServoInstruction {
-                    pulse_width: pulse_width_center + if opening { *pulse_width_delta } else { -pulse_width_delta },
-                    duration: Duration::from_nanos((full_tilt_time * 1e9) as u64) / 180,
-                    completed_state: WindowDressingState {
-                        position: self.get_tail_state().position,
-                        tilt,
-                    },
-                });
+                let position = self.get_tail_state().position;
+
+                if position == 100 {
+                    self.instructions.push_back(WindowDressingServoInstruction {
+                        pulse_width: *pulse_width_center,
+                        duration: HOLD_TIME,
+                        completed_state: WindowDressingState {
+                            position,
+                            tilt,
+                        },
+                    });
+                } else {
+                    self.instructions.push_back(WindowDressingServoInstruction {
+                        pulse_width: pulse_width_center + if opening { *pulse_width_delta } else { -pulse_width_delta },
+                        duration: Duration::from_nanos((full_tilt_time * 1e9) as u64) / 180,
+                        completed_state: WindowDressingState {
+                            position,
+                            tilt,
+                        },
+                    });
+                }
             }
         }
     }
