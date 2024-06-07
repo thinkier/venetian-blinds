@@ -6,7 +6,8 @@ use hap::futures::FutureExt;
 use hap::Result;
 use hap::server::{IpServer, Server};
 use hap::storage::{FileStorage, Storage};
-use crate::actuation::backend::mock::{mock_backend};
+use crate::actuation::backend::mock::mock_backend;
+#[cfg(feature = "hw_raspi")]
 use crate::actuation::backend::pi_pwm::pi_pwm_backend;
 use crate::model::conf::{BridgeConf, HwMode, MotorConf};
 use crate::model::gateway::{BlindInstance, Bridge};
@@ -56,7 +57,7 @@ impl<'a> Bridge<'a> {
                 HwMode::Pwm { channel } => {
                     pi_pwm_backend(*channel, &seq).await
                 }
-                #[cfg(any(feature = "hw_ble", any(feature = "hw_pwm", not(feature = "hw_raspi"))))]
+                #[cfg(any(feature = "hw_ble", all(feature = "hw_pwm", not(feature = "hw_raspi"))))]
                 m => unimplemented!("{:?} is not implemented", m)
             };
 

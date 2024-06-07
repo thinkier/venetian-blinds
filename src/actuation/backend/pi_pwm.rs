@@ -20,6 +20,7 @@ pub async fn pi_pwm_backend(channel: u8, seq: &Arc<Mutex<WindowDressingSequencer
         Polarity::Normal,
         false,
     ).unwrap();
+    let mut save = false;
 
     tokio::spawn(async move {
         let mut start = Instant::now();
@@ -33,27 +34,31 @@ pub async fn pi_pwm_backend(channel: u8, seq: &Arc<Mutex<WindowDressingSequencer
                 }
 
                 start += i.duration;
+                save = true;
             } else {
-                if pwm.is_enabled().unwrap_or(true) {
-                    pwm.disable().unwrap();
-                }
-                let state_file_name = { seq.lock().await.name.clone() };
-                let file = fs::OpenOptions::new()
-                    .write(true)
-                    .truncate(true)
-                    .create(true)
-                    .open(&state_file_name)
-                    .await;
-                match file {
-                    Ok(file) => {
-                        if let Err(e) = { seq.lock().await.save(file).await } {
-                            error!("Failed to save state for {}: {:?}", state_file_name, e);
-                        } else {
-                            info!("Saved state for {}", state_file_name);
-                        }
+                if save {
+                    save = false;
+                    if pwm.is_enabled().unwrap_or(true) {
+                        pwm.disable().unwrap();
                     }
-                    Err(e) => {
-                        error!("Failed to open state file for {}: {:?}",state_file_name, e);
+                    let state_file_name = { seq.lock().await.name.clone() };
+                    let file = fs::OpenOptions::new()
+                        .write(true)
+                        .truncate(true)
+                        .create(true)
+                        .open(&state_file_name)
+                        .await;
+                    match file {
+                        Ok(file) => {
+                            if let Err(e) = { seq.lock().await.save(file).await } {
+                                error!("Failed to save state for {}: {:?}", state_file_name, e);
+                            } else {
+                                info!("Saved state for {}", state_file_name);
+                            }
+                        }
+                        Err(e) => {
+                            error!("Failed to open state file for {}: {:?}",state_file_name, e);
+                        }
                     }
                 }
                 start += Duration::from_millis(100);
