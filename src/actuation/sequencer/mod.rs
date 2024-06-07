@@ -110,6 +110,21 @@ impl WindowDressingSequencer {
             let absolute_change = (to_angle as i16 - from_angle as i16).abs();
             if absolute_change == 0 { return; }
 
+            let pulse_width = pulse_width_center + if opening { *pulse_width_delta } else { -pulse_width_delta };
+            let position = self.get_tail_state().position;
+
+            if position == 100 {
+                self.instructions.push_back(WindowDressingServoInstruction {
+                    pulse_width,
+                    duration: Duration::from_secs(0),
+                    completed_state: WindowDressingState {
+                        position,
+                        tilt: to_angle,
+                    },
+                });
+                return;
+            }
+
             for angle_change in 1..=absolute_change {
                 let tilt = if opening {
                     from_angle as i16 - angle_change
@@ -117,27 +132,14 @@ impl WindowDressingSequencer {
                     from_angle as i16 + angle_change
                 } as i8;
 
-                let position = self.get_tail_state().position;
-
-                if position == 100 {
-                    self.instructions.push_back(WindowDressingServoInstruction {
-                        pulse_width: *pulse_width_center,
-                        duration: HOLD_TIME,
-                        completed_state: WindowDressingState {
-                            position,
-                            tilt,
-                        },
-                    });
-                } else {
-                    self.instructions.push_back(WindowDressingServoInstruction {
-                        pulse_width: pulse_width_center + if opening { *pulse_width_delta } else { -pulse_width_delta },
-                        duration: Duration::from_nanos((full_tilt_time * 1e9) as u64) / 180,
-                        completed_state: WindowDressingState {
-                            position,
-                            tilt,
-                        },
-                    });
-                }
+                self.instructions.push_back(WindowDressingServoInstruction {
+                    pulse_width,
+                    duration: Duration::from_nanos((full_tilt_time * 1e9) as u64) / 180,
+                    completed_state: WindowDressingState {
+                        position,
+                        tilt,
+                    },
+                });
             }
         }
     }
