@@ -1,6 +1,9 @@
 use std::cmp::Ordering;
 use std::collections::VecDeque;
+use std::error::Error;
+use std::ops::{AddAssign};
 use std::time::Duration;
+use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
 use crate::model::conf::MotorConf;
 use crate::model::sequencer::{WindowDressingServoInstruction, WindowDressingState, WindowDressingSequencer};
 
@@ -11,7 +14,12 @@ const HOLD_TIME: Duration = Duration::from_millis(500);
 
 impl WindowDressingSequencer {
     pub fn from_conf(conf: MotorConf) -> Self {
+        Self::from_conf_and_name(conf, String::new())
+    }
+
+    pub fn from_conf_and_name(conf: MotorConf, name: String) -> Self {
         Self {
+            name,
             motor_conf: conf,
             desired_state: WindowDressingState::default(),
             current_state: WindowDressingState::default(),
@@ -77,14 +85,12 @@ impl WindowDressingSequencer {
                     duration: Duration::from_nanos((full_cycle_time * 1e9) as u64) / 100,
                     completed_state: WindowDressingState {
                         position,
-                        tilt: if position == 100 { 0 } else { angle_while_moving },
+                        tilt: angle_while_moving,
                     },
                 });
             }
         }
-        if opened < 100 {
-            self.add_tilt(angle_while_moving, self.current_state.tilt);
-        }
+        self.add_tilt(angle_while_moving, self.current_state.tilt);
     }
 
     /// Command from HAP to set the tilt of the window dressing.
@@ -100,18 +106,18 @@ impl WindowDressingSequencer {
 
     /// Schedules the command necessary to tilt the window dressing.
     fn add_tilt(&mut self, from_angle: i8, to_angle: i8) {
+        let opening = to_angle < from_angle;
+        let absolute_change = (to_angle as i16 - from_angle as i16).abs();
+        if absolute_change == 0 { return; }
+        let position = self.get_tail_state().position;
+
         let MotorConf::Servo {
             pulse_width_center, pulse_width_delta,
             full_tilt_time, ..
         } = &self.motor_conf;
         if let Some(full_tilt_time) = full_tilt_time {
             self.desired_state.tilt = to_angle;
-            let opening = to_angle < from_angle;
-            let absolute_change = (to_angle as i16 - from_angle as i16).abs();
-            if absolute_change == 0 { return; }
-
             let pulse_width = pulse_width_center + if opening { *pulse_width_delta } else { -pulse_width_delta };
-            let position = self.get_tail_state().position;
 
             if position == 100 {
                 self.instructions.push_back(WindowDressingServoInstruction {
@@ -169,6 +175,27 @@ impl WindowDressingSequencer {
             completed_state: end_state,
         });
     }
+
+    /// Save the current state of the sequencer to the provided stream
+    pub async fn save<W: AsyncWrite + Unpin>(&self, mut save: W) -> Result<(), Box<dyn Error>> {
+        let str = toml::to_string(&self.current_state)?;
+        save.write_all(str.as_bytes()).await?;
+
+        Ok(())
+    }
+
+    /// Load the last known state of the sequencer from the provided stream
+    pub async fn load<R: AsyncRead + Unpin>(&mut self, mut read: R) -> Result<(), Box<dyn Error>> {
+        let mut buf = String::new();
+        read.read_to_string(&mut buf).await?;
+        let state: WindowDressingState = toml::from_str(&buf)?;
+
+        self.current_state = state;
+        self.desired_state = state;
+        self.instructions.clear();
+
+        Ok(())
+    }
 }
 
 impl PartialOrd for WindowDressingState {
@@ -186,5 +213,16 @@ impl Ord for WindowDressingState {
         } else {
             self.position.cmp(&other.position)
         }
+    }
+}
+
+impl AddAssign<&WindowDressingServoInstruction> for WindowDressingServoInstruction {
+    fn add_assign(&mut self, rhs: &WindowDressingServoInstruction) {
+        if self.pulse_width != rhs.pulse_width {
+            panic!("Cannot add instructions with different pulse widths");
+        }
+
+        self.duration += rhs.duration;
+        self.completed_state = rhs.completed_state;
     }
 }

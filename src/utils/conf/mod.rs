@@ -1,6 +1,10 @@
+use std::sync::Arc;
+use tokio::fs;
+use tokio::sync::Mutex;
 use crate::model::conf::{BridgeConf, MotorConf};
 #[cfg(any(feature = "hw_ble"))]
 use crate::model::conf::HwMode;
+use crate::model::sequencer::WindowDressingSequencer;
 
 #[cfg(test)]
 mod tests;
@@ -52,4 +56,45 @@ impl Default for MotorConf {
             full_tilt_time: None,
         }
     }
+}
+
+impl MotorConf {
+    pub async fn to_sequencer(&self, name: &str) -> Arc<Mutex<WindowDressingSequencer>> {
+        let name = name_to_state_config(name);
+        let mut seq = WindowDressingSequencer::from_conf_and_name(*self, name.clone());
+
+        let file = fs::OpenOptions::new()
+            .write(false)
+            .create(false)
+            .read(true)
+            .open(&name)
+            .await;
+
+        match file {
+            Ok(file) => {
+                if let Err(e) = seq.load(file).await {
+                    warn!("Failed to load state for {}: {:?}", name, e);
+                }
+            }
+            Err(e) => {
+                warn!("Failed to open state file for {}: {:?}", name, e);
+            }
+        }
+
+        Arc::new(Mutex::new(seq))
+    }
+}
+
+fn name_to_state_config(name: &str) -> String {
+    format!("data/{}.toml", safe_string(name))
+}
+
+fn safe_string(s: &str) -> String {
+    s.chars()
+        .map(|c| if c.is_alphanumeric() {
+            c
+        } else {
+            '_'
+        })
+        .collect()
 }

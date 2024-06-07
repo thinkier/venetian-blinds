@@ -32,15 +32,17 @@ fn open_full_sequence() {
         assert_eq!(seq.get_next_instruction(), Some(WindowDressingServoInstruction {
             pulse_width: 1900,
             duration: Duration::from_secs(1),
-            completed_state: WindowDressingState { position: i, tilt: if i == 100 { 0 } else { -90 } },
+            completed_state: WindowDressingState { position: i, tilt: -90 },
         }));
     }
 
-    // As it is fully opened, the tilt should be set to 0 there is no need to tilt it back to the previous state
+    // Blinds should teleport back to previous tilt when fully opened
+    assert_eq!(seq.get_next_instruction().unwrap().completed_state.tilt, 90);
+
     assert_eq!(seq.get_next_instruction(), Some(WindowDressingServoInstruction {
         pulse_width: 1500,
         duration: HOLD_TIME,
-        completed_state: WindowDressingState { position: 100, tilt: 0 },
+        completed_state: WindowDressingState { position: 100, tilt: 90 },
     }));
     assert_eq!(seq.get_next_instruction(), None);
 }
@@ -57,14 +59,14 @@ fn open_full_tiltless_sequence() {
         assert_eq!(seq.get_next_instruction(), Some(WindowDressingServoInstruction {
             pulse_width: 1900,
             duration: Duration::from_secs(1),
-            completed_state: WindowDressingState { position: i, tilt: if i == 100 { 0 } else { -90 } },
+            completed_state: WindowDressingState { position: i, tilt: -90 },
         }));
     }
 
     assert_eq!(seq.get_next_instruction(), Some(WindowDressingServoInstruction {
         pulse_width: 1500,
         duration: HOLD_TIME,
-        completed_state: WindowDressingState { position: 100, tilt: 0 },
+        completed_state: WindowDressingState { position: 100, tilt: -90 },
     }));
     assert_eq!(seq.get_next_instruction(), None);
 }

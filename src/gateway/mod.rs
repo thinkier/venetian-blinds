@@ -1,4 +1,3 @@
-use std::sync::Arc;
 use hap::accessory::{AccessoryCategory, AccessoryInformation};
 use hap::{Config, MacAddress, Pin};
 use hap::accessory::window_covering::WindowCoveringAccessory;
@@ -7,7 +6,6 @@ use hap::futures::FutureExt;
 use hap::Result;
 use hap::server::{IpServer, Server};
 use hap::storage::{FileStorage, Storage};
-use tokio::sync::Mutex;
 use crate::actuation::backend::mock::{mock_backend};
 use crate::model::conf::{BridgeConf, HwMode, MotorConf};
 use crate::model::gateway::{BlindInstance, Bridge};
@@ -47,7 +45,7 @@ impl<'a> Bridge<'a> {
         };
 
         for conf in &bridge.conf.blinds {
-            let seq = Arc::new(Mutex::new(WindowDressingSequencer::from_conf(conf.motor)));
+            let seq = conf.motor.to_sequencer(&conf.name).await;
 
             let backend = match &conf.backend {
                 HwMode::Mock => {
@@ -94,8 +92,7 @@ impl<'a> Bridge<'a> {
                     accessory.window_covering.target_vertical_tilt_angle = None;
                 }
                 chardef!(seq, Some(&mut accessory.window_covering.current_position),
-                    |seq: &mut WindowDressingSequencer| { seq.current_state.position },
-                    |seq: &mut WindowDressingSequencer, new| { seq.set_position(new) }
+                    |seq: &mut WindowDressingSequencer| { seq.current_state.position }
                 );
 
                 chardef!(seq, Some(&mut accessory.window_covering.position_state),
@@ -127,7 +124,7 @@ impl<'a> Bridge<'a> {
     }
 
     fn accessories(&mut self) -> Result<Vec<WindowCoveringAccessory>> {
-        let mut buf = vec![];
+        let mut accessories_buf = vec![];
 
         let accessories = self.blinds.iter().enumerate().map(|(id, inst)| {
             (WindowCoveringAccessory::new((id as u64 * 10) + 1, AccessoryInformation {
@@ -140,10 +137,10 @@ impl<'a> Bridge<'a> {
             let mut accessory = accessory?;
 
             self.configure_accessory(&mut accessory, inst);
-            buf.push(accessory);
+            accessories_buf.push(accessory);
         }
 
-        Ok(buf)
+        Ok(accessories_buf)
     }
 
     pub async fn start(&mut self) -> Result<()> {
