@@ -13,6 +13,7 @@ mod tests;
 const HOLD_TIME: Duration = Duration::from_millis(500);
 
 impl WindowDressingSequencer {
+    #[cfg(test)]
     pub fn from_conf(conf: MotorConf) -> Self {
         Self::from_conf_and_name(conf, String::new())
     }
