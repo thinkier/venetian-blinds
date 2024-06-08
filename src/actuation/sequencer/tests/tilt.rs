@@ -5,7 +5,8 @@ use crate::model::sequencer::{WindowDressingSequencer, WindowDressingServoInstru
 
 fn conf() -> MotorConf {
     MotorConf::Servo {
-        pulse_width_delta: 400,
+        pulse_width_retract: 1000,
+        pulse_width_extend: 1700,
         pulse_width_center: 1500,
         full_cycle_time: 100f32,
         full_tilt_time: Some(1.8),
@@ -45,7 +46,7 @@ fn close_full() {
             completed_state: WindowDressingState { position: 0, tilt: i },
         }));
     }
-    assert_eq!(seq.get_next_instruction(), Some(WindowDressingServoInstruction{
+    assert_eq!(seq.get_next_instruction(), Some(WindowDressingServoInstruction {
         pulse_width: 1500,
         duration: HOLD_TIME,
         completed_state: WindowDressingState { position: 0, tilt: 90 },
@@ -66,7 +67,7 @@ fn open_full() {
             completed_state: WindowDressingState { position: 0, tilt: -i },
         }));
     }
-    assert_eq!(seq.get_next_instruction(), Some(WindowDressingServoInstruction{
+    assert_eq!(seq.get_next_instruction(), Some(WindowDressingServoInstruction {
         pulse_width: 1500,
         duration: HOLD_TIME,
         completed_state: WindowDressingState { position: 0, tilt: -90 },
@@ -81,9 +82,9 @@ fn close_trig_endstop() {
     seq.current_state.tilt = -90;
     seq.set_tilt(90);
 
-    let _ = (0..90).map(|_|seq.get_next_instruction());
+    let _ = (0..90).map(|_| seq.get_next_instruction());
     seq.trig_endstop();
-    assert_eq!(seq.current_state, WindowDressingState{
+    assert_eq!(seq.current_state, WindowDressingState {
         position: 0,
         tilt: 90,
     });
@@ -102,9 +103,9 @@ fn open_trig_endstop() {
     seq.current_state.tilt = 90;
     seq.set_tilt(-90);
 
-    let _ = (0..90).map(|_|seq.get_next_instruction());
+    let _ = (0..90).map(|_| seq.get_next_instruction());
     seq.trig_endstop();
-    assert_eq!(seq.current_state, WindowDressingState{
+    assert_eq!(seq.current_state, WindowDressingState {
         position: 100,
         tilt: 0,
     });

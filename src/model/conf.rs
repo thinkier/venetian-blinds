@@ -27,8 +27,10 @@ pub struct BlindConf {
 #[serde(rename_all = "lowercase")]
 pub enum MotorConf {
     Servo {
-        /// PWM width to add to the phase in order to open the blinds
-        pulse_width_delta: i16,
+        /// PWM width to use when the continuous servo is commanded to retract the blinds
+        pulse_width_retract: i16,
+        /// PWM width to use when the continuous servo is commanded to extend the blinds
+        pulse_width_extend: i16,
         /// PWM phase width where the continuous servo will be engaged but stationary
         #[serde(default = "default_servo_pulse_width")]
         pulse_width_center: i16,

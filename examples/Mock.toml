@@ -4,13 +4,15 @@ pin = "69696969"
 name = "MockRoller"
 [blinds.mock]
 [blinds.servo]
-pulse_width_delta = 400
+pulse_width_retract = 1000
+pulse_width_extend = 1700
 full_cycle_time = 100
 
 [[blinds]]
 name = "MockVenetian"
 [blinds.mock]
 [blinds.servo]
-pulse_width_delta = 400
+pulse_width_retract = 1000
+pulse_width_extend = 1700
 full_tilt_time = 1
 full_cycle_time = 100

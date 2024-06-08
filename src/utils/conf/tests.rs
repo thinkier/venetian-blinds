@@ -8,7 +8,8 @@ fn mock() {
     assert_eq!(conf.blinds.remove(0), BlindConf {
         name: "MockRoller".to_string(),
         motor: MotorConf::Servo {
-            pulse_width_delta: 400,
+            pulse_width_retract: 1000,
+            pulse_width_extend: 1700,
             pulse_width_center: 1500,
             full_cycle_time: 100f32,
             full_tilt_time: None,
@@ -19,7 +20,8 @@ fn mock() {
     assert_eq!(conf.blinds.remove(0), BlindConf {
         name: "MockVenetian".to_string(),
         motor: MotorConf::Servo {
-            pulse_width_delta: 400,
+            pulse_width_retract: 1000,
+            pulse_width_extend: 1700,
             pulse_width_center: 1500,
             full_cycle_time: 100f32,
             full_tilt_time: Some(1f32),
