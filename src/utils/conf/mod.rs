@@ -13,7 +13,7 @@ impl BridgeConf {
     /// Attempt to read the configuration of the bridge from the file system. The configuration file is expected to be in the TOML format.
     ///
     /// When the environment variable `BRIDGE_CONF` is set, the configuration will attempt to read from the path specified by the envar.
-    /// Otherwise, if the environment variable is not set, the configuration will attempt to read from the file `Bridge.toml`, or `DebugConf.toml` in a unit testing environment.
+    /// Otherwise, if the environment variable is not set, the configuration will attempt to read from the file `Bridge.toml`.
     pub fn read() -> Self {
         let conf_path = std::env::var("BRIDGE_CONF")
             .unwrap_or_else(|_| "Bridge.toml".to_string());
