@@ -7,8 +7,8 @@ fn conf() -> MotorConf {
     MotorConf::Servo {
         pulse_width_retract: 1900,
         pulse_width_extend: 1100,
-        pulse_width_retract_tilt: 1900,
-        pulse_width_extend_tilt: 1100,
+        pulse_width_retract_tilt: 1600,
+        pulse_width_extend_tilt: 1400,
         pulse_width_center: 1500,
         full_cycle_time: 100f32,
         full_tilt_time: Some(1.8),
@@ -25,7 +25,7 @@ fn open_full_sequence() {
 
     for i in -89..=90 {
         assert_eq!(seq.get_next_instruction(), Some(WindowDressingServoInstruction {
-            pulse_width: 1900,
+            pulse_width: 1600,
             duration: Duration::from_millis(10),
             completed_state: WindowDressingState { position: 0, tilt: -i },
         }));
@@ -84,7 +84,7 @@ fn open_partial_sequence() {
 
     for i in -59..=90 {
         assert_eq!(seq.get_next_instruction(), Some(WindowDressingServoInstruction {
-            pulse_width: 1900,
+            pulse_width: 1600,
             duration: Duration::from_millis(10),
             completed_state: WindowDressingState { position: 25, tilt: -i },
         }));
@@ -100,7 +100,7 @@ fn open_partial_sequence() {
 
     for i in -89..=60 {
         assert_eq!(seq.get_next_instruction(), Some(WindowDressingServoInstruction {
-            pulse_width: 1100,
+            pulse_width: 1400,
             duration: Duration::from_millis(10),
             completed_state: WindowDressingState { position: 75, tilt: i },
         }));
@@ -173,7 +173,7 @@ fn close_full_sequence() {
 
     // no tilt when position is 100
     assert_eq!(seq.get_next_instruction(), Some(WindowDressingServoInstruction {
-        pulse_width: 1100,
+        pulse_width: 1400,
         duration: Duration::from_secs(0),
         completed_state: WindowDressingState { position: 100, tilt: 90 },
     }));
@@ -188,7 +188,7 @@ fn close_full_sequence() {
 
     for i in -89..=90 {
         assert_eq!(seq.get_next_instruction(), Some(WindowDressingServoInstruction {
-            pulse_width: 1900,
+            pulse_width: 1600,
             duration: Duration::from_millis(10),
             completed_state: WindowDressingState { position: 0, tilt: -i },
         }));
@@ -235,7 +235,7 @@ fn close_partial_sequence() {
 
     for i in -89..=90 {
         assert_eq!(seq.get_next_instruction(), Some(WindowDressingServoInstruction {
-            pulse_width: 1100,
+            pulse_width: 1400,
             duration: Duration::from_millis(10),
             completed_state: WindowDressingState { position: 75, tilt: i },
         }));
@@ -251,7 +251,7 @@ fn close_partial_sequence() {
 
     for i in -89..=90 {
         assert_eq!(seq.get_next_instruction(), Some(WindowDressingServoInstruction {
-            pulse_width: 1900,
+            pulse_width: 1600,
             duration: Duration::from_millis(10),
             completed_state: WindowDressingState { position: 25, tilt: -i },
         }));
@@ -298,7 +298,7 @@ fn close_trig_endstop() {
 
     // no tilt when position is 100
     assert_eq!(seq.get_next_instruction(), Some(WindowDressingServoInstruction {
-        pulse_width: 1100,
+        pulse_width: 1400,
         duration: Duration::from_secs(0),
         completed_state: WindowDressingState { position: 100, tilt: 90 },
     }));
