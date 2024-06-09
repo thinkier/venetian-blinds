@@ -5,8 +5,8 @@ use crate::model::sequencer::{WindowDressingSequencer, WindowDressingServoInstru
 
 fn conf() -> MotorConf {
     MotorConf::Servo {
-        pulse_width_retract: 1000,
-        pulse_width_extend: 1700,
+        pulse_width_retract: 1900,
+        pulse_width_extend: 1100,
         pulse_width_center: 1500,
         full_cycle_time: 100f32,
         full_tilt_time: Some(1.8),
