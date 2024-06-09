@@ -10,6 +10,8 @@ fn mock() {
         motor: MotorConf::Servo {
             pulse_width_retract: 1000,
             pulse_width_extend: 1700,
+            pulse_width_retract_tilt: 1100,
+            pulse_width_extend_tilt: 1900,
             pulse_width_center: 1500,
             full_cycle_time: 100f32,
             full_tilt_time: None,
@@ -22,6 +24,8 @@ fn mock() {
         motor: MotorConf::Servo {
             pulse_width_retract: 1000,
             pulse_width_extend: 1700,
+            pulse_width_retract_tilt: 1100,
+            pulse_width_extend_tilt: 1900,
             pulse_width_center: 1500,
             full_cycle_time: 100f32,
             full_tilt_time: Some(1f32),
@@ -41,6 +45,8 @@ fn ble() {
         motor: MotorConf::Servo {
             pulse_width_retract: 1000,
             pulse_width_extend: 1700,
+            pulse_width_retract_tilt: 1100,
+            pulse_width_extend_tilt: 1900,
             pulse_width_center: 1500,
             full_cycle_time: 100f32,
             full_tilt_time: None,
@@ -55,6 +61,8 @@ fn ble() {
         motor: MotorConf::Servo {
             pulse_width_retract: 1000,
             pulse_width_extend: 1700,
+            pulse_width_retract_tilt: 1100,
+            pulse_width_extend_tilt: 1900,
             pulse_width_center: 1500,
             full_cycle_time: 100f32,
             full_tilt_time: Some(1f32),
@@ -76,6 +84,8 @@ fn pwm() {
         motor: MotorConf::Servo {
             pulse_width_retract: 1000,
             pulse_width_extend: 1700,
+            pulse_width_retract_tilt: 1100,
+            pulse_width_extend_tilt: 1900,
             pulse_width_center: 1500,
             full_cycle_time: 100f32,
             full_tilt_time: None,
@@ -90,6 +100,8 @@ fn pwm() {
         motor: MotorConf::Servo {
             pulse_width_retract: 1000,
             pulse_width_extend: 1700,
+            pulse_width_retract_tilt: 1100,
+            pulse_width_extend_tilt: 1900,
             pulse_width_center: 1500,
             full_cycle_time: 100f32,
             full_tilt_time: Some(1f32),

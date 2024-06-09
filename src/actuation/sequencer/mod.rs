@@ -114,12 +114,12 @@ impl WindowDressingSequencer {
         let position = self.get_tail_state().position;
 
         let MotorConf::Servo {
-            pulse_width_extend, pulse_width_retract,
+            pulse_width_extend_tilt, pulse_width_retract_tilt,
             full_tilt_time, ..
         } = &self.motor_conf;
         if let Some(full_tilt_time) = full_tilt_time {
             self.desired_state.tilt = to_angle;
-            let pulse_width = *if opening { pulse_width_retract } else { pulse_width_extend };
+            let pulse_width = *if opening { pulse_width_retract_tilt } else { pulse_width_extend_tilt };
 
             if position == 100 {
                 self.instructions.push_back(WindowDressingServoInstruction {

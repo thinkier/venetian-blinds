@@ -7,6 +7,8 @@ channel = 0
 [blinds.servo]
 pulse_width_retract = 1000
 pulse_width_extend = 1700
+pulse_width_retract_tilt = 1100
+pulse_width_extend_tilt = 1900
 full_cycle_time = 100
 
 [[blinds]]
@@ -16,5 +18,7 @@ channel = 1
 [blinds.servo]
 pulse_width_retract = 1000
 pulse_width_extend = 1700
+pulse_width_retract_tilt = 1100
+pulse_width_extend_tilt = 1900
 full_tilt_time = 1
 full_cycle_time = 100

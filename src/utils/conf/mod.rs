@@ -25,7 +25,7 @@ impl BridgeConf {
         let conf_str = std::fs::read_to_string(conf_path).unwrap();
 
         #[cfg(any(feature = "hw_ble"))]
-        {
+            let mut parsed = {
             let mut parsed: Self = toml::from_str(&conf_str).unwrap();
 
             for blind in &mut parsed.blinds {
@@ -38,12 +38,31 @@ impl BridgeConf {
             }
 
             parsed
-        }
+        };
 
         #[cfg(not(any(feature = "hw_ble")))]
-        {
-            toml::from_str(&conf_str).unwrap()
+            let mut parsed: Self = {
+            toml::from_str::<Self>(&conf_str).unwrap()
+        };
+
+        for item in &mut parsed.blinds {
+            let MotorConf::Servo {
+                pulse_width_retract,
+                pulse_width_extend,
+                pulse_width_retract_tilt,
+                pulse_width_extend_tilt,
+                ..
+            } = &mut item.motor;
+
+            if *pulse_width_retract_tilt == i16::default() {
+                *pulse_width_retract_tilt = *pulse_width_retract;
+            }
+            if *pulse_width_extend_tilt == i16::default() {
+                *pulse_width_extend_tilt = *pulse_width_extend;
+            }
         }
+
+        parsed
     }
 }
 
@@ -52,6 +71,8 @@ impl Default for MotorConf {
         MotorConf::Servo {
             pulse_width_retract: 1900,
             pulse_width_extend: 1100,
+            pulse_width_retract_tilt: 1900,
+            pulse_width_extend_tilt: 1100,
             pulse_width_center: 1500,
             full_cycle_time: 100f32,
             full_tilt_time: None,

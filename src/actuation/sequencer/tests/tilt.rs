@@ -7,6 +7,8 @@ fn conf() -> MotorConf {
     MotorConf::Servo {
         pulse_width_retract: 1900,
         pulse_width_extend: 1100,
+        pulse_width_retract_tilt: 2500,
+        pulse_width_extend_tilt: 500,
         pulse_width_center: 1500,
         full_cycle_time: 100f32,
         full_tilt_time: Some(1.8),
@@ -41,7 +43,7 @@ fn close_full() {
     seq.set_tilt(90);
     for i in -89..=90 {
         assert_eq!(seq.get_next_instruction(), Some(WindowDressingServoInstruction {
-            pulse_width: 1100,
+            pulse_width: 500,
             duration: Duration::from_millis(10),
             completed_state: WindowDressingState { position: 0, tilt: i },
         }));
@@ -62,7 +64,7 @@ fn open_full() {
     seq.set_tilt(-90);
     for i in -89..=90 {
         assert_eq!(seq.get_next_instruction(), Some(WindowDressingServoInstruction {
-            pulse_width: 1900,
+            pulse_width: 2500,
             duration: Duration::from_millis(10),
             completed_state: WindowDressingState { position: 0, tilt: -i },
         }));

@@ -31,6 +31,12 @@ pub enum MotorConf {
         pulse_width_retract: i16,
         /// PWM width to use when the continuous servo is commanded to extend the blinds
         pulse_width_extend: i16,
+        /// PWM width to use when the continuous servo is commanded to tilt the blinds for retraction
+        #[serde(default)]
+        pulse_width_retract_tilt: i16,
+        /// PWM width to use when the continuous servo is commanded to tilt the blinds for extension
+        #[serde(default)]
+        pulse_width_extend_tilt: i16,
         /// PWM phase width where the continuous servo will be engaged but stationary
         #[serde(default = "default_servo_pulse_width")]
         pulse_width_center: i16,
@@ -41,7 +47,7 @@ pub enum MotorConf {
     }
 }
 
-fn default_servo_pulse_width() -> i16 {
+const fn default_servo_pulse_width() -> i16 {
     1500
 }
 
