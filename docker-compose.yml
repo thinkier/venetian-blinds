@@ -1,0 +1,13 @@
+services:
+  blinds_hap:
+    image: ghcr.io/thinkier/blinds_hap
+    pull_policy: always
+    restart: always
+    network_mode: host
+    volumes:
+      - ./config:/app/config
+      - ./persist:/app/persist
+    devices:
+      - /dev/serial0
+    environment:
+      DEBUG: BlindsHAP:*
