@@ -1,7 +1,6 @@
 services:
   blinds_hap:
     image: ghcr.io/thinkier/blinds_hap
-    pull_policy: always
     restart: always
     network_mode: host
     volumes:
