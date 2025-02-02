@@ -134,3 +134,4 @@ dist
 config/homekit.yml
 config/persistence.yml
 persist/
+.DS_Store
