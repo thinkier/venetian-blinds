@@ -3,4 +3,4 @@ instances:
     channel: 0
     full_cycle_steps: 77500
     full_tilt_steps: 2500
-    stallguard_threshold: 100
+    stallguard_threshold: 80
