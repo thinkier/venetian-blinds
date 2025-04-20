@@ -1,12 +1,22 @@
 instances:
+  # Left
   - uuid: 01b12134-c703-435a-bd3a-a443f5fd5e65
     channel: 0
     full_cycle_steps: 78000
     full_tilt_steps: 2500
-    stallguard_threshold: 80
+    stallguard_threshold: 110
+    reverse: false
+  # Center
   - uuid: 01b12134-c703-435a-bd3a-a443f5fd5e66
     channel: 2
     full_cycle_steps: 78000
     full_tilt_steps: 2500
-    stallguard_threshold: 80
+    stallguard_threshold: 100
+    reverse: true
+  # Right
+  - uuid: 01b12134-c703-435a-bd3a-a443f5fd5e67
+    channel: 1
+    full_cycle_steps: 78000
+    full_tilt_steps: 2500
+    stallguard_threshold: 100
     reverse: true
