@@ -9,4 +9,5 @@ services:
     devices:
       - /dev/serial0
     environment:
-      DEBUG: BlindsHAP:*
+      # The logs totally didn't blow up above 9GiB and crowd out the rest of the OS
+      DEBUG: BlindsHAP:*,-BlindsHAP:Proto:*
